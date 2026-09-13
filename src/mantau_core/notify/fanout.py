@@ -56,6 +56,30 @@ class TelegramBinding:
 
 
 @dataclass
+class FixedBinding:
+    """Targets a fixed, pre-configured list of targets regardless of
+    `camera_id` — for a channel that isn't per-device at all: a console dev
+    sink, an ops-wide webhook. `PushBinding`/`TelegramBinding` resolve
+    targets FROM the event or a per-account list; this one ignores the
+    event entirely and always fires.
+
+    This is the fix for a real bug: a backend's "no push/Telegram
+    configured" fallback wrapped `ConsoleChannel` in a `PushBinding` before
+    this existed, which meant the console sink silently never fired on a
+    fresh checkout with zero registered devices — `PushBinding` still
+    resolves targets via `RecipientResolver.devices_for_camera()`, which is
+    empty until something registers a device token. A "just print it"
+    fallback must not depend on registration state at all.
+    """
+
+    notifier: Notifier
+    targets: list[str]
+
+    def targets_for_camera(self, camera_id: str) -> list[str]:
+        return list(self.targets)
+
+
+@dataclass
 class Fanout:
     channels: list[ChannelBinding]
     tracker: DeliveryTracker

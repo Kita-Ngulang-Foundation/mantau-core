@@ -8,7 +8,7 @@ light: `channels.push`, `channels.telegram`, `channels.console`, `delivery`,
 """
 
 from .alert import Alert
-from .fanout import ChannelBinding, Fanout, PushBinding, TelegramBinding
+from .fanout import ChannelBinding, Fanout, FixedBinding, PushBinding, TelegramBinding
 from .protocol import Delivery, DeliveryStatus, Notifier
 from .recipients import EmergencyContact, RecipientResolver
 
@@ -23,4 +23,5 @@ __all__ = [
     "ChannelBinding",
     "PushBinding",
     "TelegramBinding",
+    "FixedBinding",
 ]

@@ -3,7 +3,7 @@ import asyncio
 from mantau_core.contracts import FallEvent
 from mantau_core.notify.channels.push.tokens import DeviceToken, Platform
 from mantau_core.notify.delivery import DeliveryTracker
-from mantau_core.notify.fanout import Fanout, PushBinding, TelegramBinding
+from mantau_core.notify.fanout import Fanout, FixedBinding, PushBinding, TelegramBinding
 from mantau_core.notify.protocol import Delivery, DeliveryStatus
 from mantau_core.telemetry import LatencyTrace, Stage
 
@@ -114,3 +114,36 @@ def test_fanout_stamps_the_latency_trace():
     assert trace.has(Stage.SENT)
     assert trace.has(Stage.DELIVERED)
     assert trace.within_budget(5.0) is True
+
+
+def test_fixed_binding_always_fires_regardless_of_camera():
+    notifier = _FakeNotifier()
+    fanout = Fanout(channels=[FixedBinding(notifier=notifier, targets=["console"])],
+                    tracker=DeliveryTracker())
+
+    asyncio.run(fanout.send(_fall_event(), camera_name="Kamar Ibu"))
+
+    assert notifier.sent == [("Jatuh terdeteksi — Kamar Ibu", "console")]
+
+
+def test_regression_a_devicefree_pushbinding_never_fires_but_fixedbinding_does():
+    """The exact bug FixedBinding exists to fix: a console/dev fallback
+    wrapped in PushBinding with no registered devices silently never sends
+    -- PushBinding resolves targets from the resolver, and an empty
+    resolver means an empty target list, means the loop body never runs."""
+    empty_resolver = _FakeResolver(tokens=[])
+    broken_notifier = _FakeNotifier()
+    broken_fanout = Fanout(
+        channels=[PushBinding(notifier=broken_notifier, resolver=empty_resolver)],
+        tracker=DeliveryTracker(),
+    )
+    asyncio.run(broken_fanout.send(_fall_event(), camera_name="Kamar Ibu"))
+    assert broken_notifier.sent == []  # confirms the bug this fix addresses
+
+    fixed_notifier = _FakeNotifier()
+    fixed_fanout = Fanout(
+        channels=[FixedBinding(notifier=fixed_notifier, targets=["console"])],
+        tracker=DeliveryTracker(),
+    )
+    asyncio.run(fixed_fanout.send(_fall_event(), camera_name="Kamar Ibu"))
+    assert fixed_notifier.sent == [("Jatuh terdeteksi — Kamar Ibu", "console")]
