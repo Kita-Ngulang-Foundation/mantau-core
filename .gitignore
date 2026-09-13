@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Secrets — FCM/GCP service account keys, .env files
+*serviceAccount*.json
+*service-account*.json
+firebase-*.json
+.env
+.env.*
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# LLM Stuff
+.codex/
+.mcp.json
+CLAUDE.md
+handoff.md
