@@ -8,7 +8,7 @@ that is exactly the drift this package exists to prevent.
 from .camera import CameraRef, Credentials, StreamProfile
 from .envelope import Envelope
 from .errors import ReachabilityError, ReachabilityErrorKind
-from .events import ClipRef, FallEvent, Heartbeat, Severity
+from .events import ClipRef, EventKind, FallEvent, Heartbeat, Severity
 
 __all__ = [
     "CameraRef",
@@ -18,6 +18,7 @@ __all__ = [
     "ReachabilityError",
     "ReachabilityErrorKind",
     "ClipRef",
+    "EventKind",
     "FallEvent",
     "Heartbeat",
     "Severity",
