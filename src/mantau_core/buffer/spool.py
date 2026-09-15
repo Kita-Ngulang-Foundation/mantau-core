@@ -29,6 +29,9 @@ class DurableSpool:
         recent frame/event data locally for a few minutes" (default 5 min)."""
         self.ttl_s = ttl_s
         self._lock = threading.Lock()
+        path = Path(path)
+        if str(path) != ":memory:":
+            path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(
