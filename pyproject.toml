@@ -14,7 +14,7 @@ dependencies = [
 [project.optional-dependencies]
 # Only needed if a backend actually sends FCM push (channels/push/fcm.py).
 # Kept optional so importing mantau_core never requires a Google Cloud dep.
-push = ["google-auth>=2.29"]
+push = ["google-auth>=2.29", "requests>=2.31"]
 # Only needed by the one adapter that talks to the mantau-ai package.
 detection = ["mantau @ git+https://github.com/Sxccv/mantau-prototype.git"]
 dev = ["pytest>=8.0"]
