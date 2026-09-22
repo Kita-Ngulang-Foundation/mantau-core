@@ -26,6 +26,25 @@ scenarios is honest.
 | `telemetry` | `LatencyTrace` (`captured → detected → queued → sent → delivered → acked`, the number the whole project is judged on) and a tiny `MetricsRegistry`. |
 | `config` | `CoreSettings` — a `pydantic-settings` base each backend subclasses with its own fields. |
 
+## Control-plane contract v1
+
+`mantau_core.contracts.control` is the additive v1 vocabulary for claims,
+capability/status reports, discovery, camera-request metadata, requested and
+effective inference modes, and durable command receipts/results. Existing
+`Envelope`, event, heartbeat, camera, and error models are unchanged.
+
+Language-neutral golden JSON lives under
+`src/mantau_core/contracts/fixtures/v1/` and is included in built packages.
+Python tests validate exact round trips today; the same files are intended as
+Kotlin serialization fixtures later. Fixtures and all normal status/result
+models intentionally have no camera password, enrollment secret, private key,
+credential object, or raw RTSP URL.
+
+Compatibility/rollback: deploy this package before the new server/agent code.
+Old readers continue using the unchanged contracts and ignore the new module.
+Rolling back consumers needs no data conversion because schema v1 is additive;
+do not delete or rename old contracts during the mixed-version window.
+
 ## Install
 
 ```powershell

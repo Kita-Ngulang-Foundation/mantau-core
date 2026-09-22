@@ -1,0 +1,1 @@
+{"schema_version":1,"platform":"raspberry_pi","architecture":"aarch64","cpu":"Cortex-A72","memory_bytes":4294967296,"available_accelerators":[],"supported_detector_backends":["mediapipe"],"software_version":"0.2.0","recommended_mode":"EDGE","supported_inference_modes":["AUTO","EDGE","CLOUD","HYBRID"],"recommendation_reason":"Local detector meets the configured frame rate."}

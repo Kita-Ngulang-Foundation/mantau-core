@@ -9,6 +9,13 @@ from .camera import CameraRef, Credentials, StreamProfile
 from .envelope import Envelope, PayloadKind
 from .errors import AttemptedFrom, ReachabilityError, ReachabilityErrorKind
 from .events import ClipRef, EventKind, FallEvent, Heartbeat, Severity
+from .control import (
+    AgentCapabilityReport, AgentClaimStatus, AgentHealthState, AgentPlatform,
+    AgentSetupStatus, AgentStatus, CameraRequestMetadata, ClaimStatus,
+    CommandFailureReason, CommandReceipt, CommandResult, CommandState,
+    CommandType, ControlCommand, DiscoveredCameraResult, InferenceMode,
+    InferenceSelection,
+)
 
 __all__ = [
     "CameraRef",
@@ -24,4 +31,21 @@ __all__ = [
     "FallEvent",
     "Heartbeat",
     "Severity",
+    "AgentCapabilityReport",
+    "AgentClaimStatus",
+    "AgentHealthState",
+    "AgentPlatform",
+    "AgentSetupStatus",
+    "AgentStatus",
+    "CameraRequestMetadata",
+    "ClaimStatus",
+    "CommandFailureReason",
+    "CommandReceipt",
+    "CommandResult",
+    "CommandState",
+    "CommandType",
+    "ControlCommand",
+    "DiscoveredCameraResult",
+    "InferenceMode",
+    "InferenceSelection",
 ]
