@@ -21,7 +21,7 @@ push = ["google-auth>=2.29", "requests>=2.31"]
 # (distribution name "mantau-prototype", import name "mantau"). Pinned to a
 # commit; bump deliberately once mantau-AI's tests are green.
 detection = [
-    "mantau-prototype @ git+https://github.com/Kita-Ngulang-Foundation/mantau-AI.git@d9ad9eaa74000e8300c1d930da659c3c78c25bc8",
+    "mantau-prototype @ git+https://github.com/Kita-Ngulang-Foundation/mantau-AI.git@3f69ed356ff4f264796261b5e20e323672997329",
 ]
 dev = ["pytest>=8.0"]
 
@@ -37,4 +37,5 @@ mantau_core = [
     "contracts/fixtures/v1/*.json",
     "detection/fixtures/*.json",
     "detection/fixtures/pose_sequences/*.json",
+    "activity/fixtures/activity_sequences/*.json",
 ]

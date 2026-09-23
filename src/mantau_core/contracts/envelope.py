@@ -39,8 +39,10 @@ class Envelope(BaseModel):
 
     @classmethod
     def for_event(cls, agent_id: str, seq: int, event: FallEvent) -> "Envelope":
-        return cls(agent_id=agent_id, seq=seq, kind=PayloadKind.FALL_EVENT,
-                    payload=event.model_dump(mode="json"))
+        # zone_id is left out when empty so fall payloads stay byte-identical to
+        # agents that predate it (the signature covers the payload as sent).
+        payload = event.model_dump(mode="json", exclude={"zone_id"} if event.zone_id is None else None)
+        return cls(agent_id=agent_id, seq=seq, kind=PayloadKind.FALL_EVENT, payload=payload)
 
     @classmethod
     def for_heartbeat(cls, agent_id: str, seq: int, heartbeat: Heartbeat) -> "Envelope":

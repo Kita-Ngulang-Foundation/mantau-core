@@ -11,6 +11,7 @@ from mantau_core.contracts.detection import DetectionSettings, ZoneKind
 
 from .geometry import zone_at
 from .observations import FrameObservation
+from .tracking import Step, TrackingConfig, TrackRegistry
 
 log = logging.getLogger(__name__)
 
@@ -18,13 +19,14 @@ log = logging.getLogger(__name__)
 @runtime_checkable
 class ActivityRule(Protocol):
     """One feature's state machine. `update` must be fast and never block:
-    it runs on the detection path for every observation."""
+    it runs on the detection path for every observation. It receives a
+    tracking `Step` (stable local ids, confidence, and the seconds its timers
+    may count -- 0 while paused), never raw detector output."""
 
     kind: EventKind
 
-    def update(self, observation: FrameObservation,
-               settings: DetectionSettings) -> list[FallEvent]:
-        """Events this observation causes, usually none."""
+    def update(self, step: Step, settings: DetectionSettings) -> list[FallEvent]:
+        """Events this step causes, usually none."""
         ...
 
     def reset(self) -> None:
@@ -42,10 +44,17 @@ class ActivityEngine:
     """
 
     def __init__(self, rules: Iterable[ActivityRule] = (),
-                 settings: DetectionSettings | None = None) -> None:
+                 settings: DetectionSettings | None = None,
+                 tracking: TrackingConfig | None = None) -> None:
         self.rules = list(rules)
         self.settings = settings or DetectionSettings()
         self.failures: dict[str, int] = {}
+        self.tracking = TrackRegistry(tracking or TrackingConfig())
+
+    def camera_lost(self) -> None:
+        """The camera stream dropped. Timers pause; nothing that changes
+        across the outage counts as someone arriving or leaving."""
+        self.tracking.camera_lost()
 
     def apply_settings(self, settings: DetectionSettings) -> None:
         if settings.version != self.settings.version or settings != self.settings:
@@ -61,12 +70,13 @@ class ActivityEngine:
             if len(people) != len(observation.people):
                 observation = FrameObservation(
                     camera_id=observation.camera_id, at=observation.at, people=people)
+        step = self.tracking.step(observation)
         events: list[FallEvent] = []
         for rule in self.rules:
             if not self._enabled(rule.kind):
                 continue
             try:
-                events.extend(rule.update(observation, self.settings))
+                events.extend(rule.update(step, self.settings))
             except Exception as exc:  # noqa: BLE001 -- isolate one bad rule
                 name = type(rule).__name__
                 self.failures[name] = self.failures.get(name, 0) + 1

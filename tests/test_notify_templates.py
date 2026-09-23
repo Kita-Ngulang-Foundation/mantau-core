@@ -29,7 +29,7 @@ def test_each_anomaly_kind_has_its_own_title_and_duration():
     cases = {
         EventKind.STILLNESS: "Tidak bergerak terlalu lama",
         EventKind.NOCTURNAL_MOVEMENT: "Aktivitas malam tidak biasa",
-        EventKind.BATHROOM_DURATION: "Terlalu lama di kamar mandi",
+        EventKind.BATHROOM_DURATION: "Belum terlihat keluar dari area kamar mandi",
     }
     for kind, title_text in cases.items():
         event = FallEvent(camera_id="cam-1", kind=kind, signals={"duration_s": 1500.0})

@@ -12,6 +12,10 @@ behave identically on every agent platform and in cloud inference.
 """
 
 from .engine import ActivityEngine, ActivityRule
+from .rules import (
+    BathroomDurationRule, NocturnalMovementRule, ProlongedPositionRule, default_rules,
+)
+from .tracking import LostTrack, Step, TrackedPerson, TrackingConfig, TrackRegistry
 from .clock import in_window, local_time
 from .geometry import point_in_polygon, zone_at
 from .observations import FrameObservation, PersonObservation, Posture, Perception
@@ -19,6 +23,15 @@ from .observations import FrameObservation, PersonObservation, Posture, Percepti
 __all__ = [
     "ActivityEngine",
     "ActivityRule",
+    "BathroomDurationRule",
+    "LostTrack",
+    "NocturnalMovementRule",
+    "ProlongedPositionRule",
+    "Step",
+    "TrackedPerson",
+    "TrackingConfig",
+    "TrackRegistry",
+    "default_rules",
     "in_window",
     "local_time",
     "FrameObservation",
