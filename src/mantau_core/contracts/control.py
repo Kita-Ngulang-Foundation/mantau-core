@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from urllib.parse import parse_qsl, urlsplit
 
 
 class ControlModel(BaseModel):
@@ -130,6 +131,25 @@ class CameraRequestMetadata(ControlModel):
     sub_path: str | None = None
     username_present: bool = False
 
+    @field_validator("host")
+    @classmethod
+    def host_has_no_credentials(cls, value: str) -> str:
+        if not value or any(c in value for c in ("@", "/", "?", "#")) or any(c.isspace() for c in value):
+            raise ValueError("Use a hostname or IP without a URL or credentials")
+        return value
+
+    @field_validator("main_path", "sub_path")
+    @classmethod
+    def path_has_no_credentials(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        parsed = urlsplit(value)
+        sensitive = {"user", "username", "password", "passwd", "pwd", "token", "auth", "authorization"}
+        if (not value.startswith("/") or parsed.netloc or parsed.scheme
+                or any(key.lower() in sensitive for key, _ in parse_qsl(parsed.query))):
+            raise ValueError("Use a stream path with credentials in the separate fields")
+        return value
+
 
 class DiscoveredCameraResult(ControlModel):
     host: str
@@ -171,4 +191,3 @@ class CommandResult(ControlModel):
     completed_at: datetime | None = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-

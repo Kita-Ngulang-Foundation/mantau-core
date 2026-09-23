@@ -29,3 +29,14 @@ def test_v1_control_fixtures_are_exact_round_trips_and_secret_free():
         assert parsed.model_dump(mode="json") == raw
         lowered = json.dumps(raw).lower()
         assert all(word not in lowered for word in forbidden)
+import pytest
+
+@pytest.mark.parametrize('field,value', [
+    ('host', 'rtsp://operator:private-value@camera'),
+    ('main_path', '/stream?password=private-value'),
+    ('sub_path', '//operator:private-value@camera/stream'),
+])
+def test_camera_metadata_rejects_embedded_credentials(field, value):
+    from mantau_core.contracts import CameraRequestMetadata
+    with pytest.raises(ValueError):
+        CameraRequestMetadata(**{'name': 'Room', 'host': 'camera.local', field: value})

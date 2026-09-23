@@ -2,9 +2,8 @@
 
 `TokenStore` is a Protocol: each backend implements it against its own
 SQLite (`store/token_store.py` in both backend repos), so this package never
-opens a database connection itself. `FCMPushChannel` calls `prune`/`touch` by
-raw token string — that string is the entire identity FCM needs, so nothing
-here has to know which member or household a device belongs to.
+opens a database connection itself. Ownership fields are optional in the v1
+model for compatibility; production stores enforce them.
 """
 
 from __future__ import annotations
@@ -25,6 +24,10 @@ class DeviceToken(BaseModel):
     device_id: str
     platform: Platform
     token: str
+    # Optional on the shared v1 model for compatibility. Production stores
+    # require both values and derive them from the authenticated principal.
+    user_id: str | None = None
+    household_id: str | None = None
     registered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_seen_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
