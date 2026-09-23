@@ -1,7 +1,9 @@
 """NullDetector must satisfy the Detector protocol and only fire on cadence.
-MediapipeDetector must fail loudly (not silently, not at import time) until
-mantau-ai actually ships a streaming entrypoint.
+MediapipeDetector must fail loudly (not silently, not at import time) when
+mantau-AI's streaming entrypoint is not installed.
 """
+
+import sys
 
 import numpy as np
 import pytest
@@ -32,9 +34,9 @@ def test_null_detector_fires_on_a_fixed_cadence():
     assert fires[2][0].confidence == 1.0
 
 
-def test_mediapipe_adapter_fails_loudly_without_mantau_ai():
-    # mantau-ai's streaming entrypoint doesn't exist yet in this checkout —
-    # constructing the adapter must say so clearly, not raise a bare ImportError
-    # or (worse) silently fall back to doing nothing.
+def test_mediapipe_adapter_fails_loudly_without_mantau_ai(monkeypatch):
+    # Without the `detection` extra, constructing the adapter must say so
+    # clearly, not raise a bare ImportError or (worse) silently do nothing.
+    monkeypatch.setitem(sys.modules, "mantau.api.streaming", None)
     with pytest.raises(ImportError, match="streaming entrypoint"):
         MediapipeDetector("cam-1", config={})

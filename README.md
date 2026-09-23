@@ -65,15 +65,32 @@ Optional extras:
 All tests run offline — HTTP channels (FCM, Telegram) are tested against
 `httpx.MockTransport`, never a real network call.
 
-## The one file that touches `mantau-ai`
+## The one file that touches `mantau-AI`
 
 `src/mantau_core/detection/mediapipe_adapter.py` is the **only** place in
-this entire package allowed to `import mantau.*`. It currently raises a
-clear `ImportError` on construction, because `mantau-ai` doesn't yet expose
-a streaming entrypoint — `mantau.api.streaming.StreamingDetector`, taking
-frames in and returning `FallEvent`s out. Until that ships, both backends
-build and test against `NullDetector`, which satisfies the same `Detector`
-protocol.
+this entire package allowed to `import mantau.*`. `MediapipeDetector` wraps
+mantau-AI's `mantau.api.streaming.StreamingDetector` (motion gate, MediaPipe
+pose, rule-based fall confirmation, ONNX classifier) as a `PerceivingDetector`:
+falls become `contracts.FallEvent`, per-frame people become
+`activity.FrameObservation`s. Without the `detection` extra, constructing it
+raises a clear `ImportError`; `NullDetector` still satisfies the protocol for
+wiring tests.
+
+Model files are pinned in `detection/fixtures/model_artifacts.json` (name,
+size, SHA-256). `detection/artifacts.py` verifies every file before any runtime
+loads it; the directory comes from the `model_dir` argument, `MANTAU_MODEL_DIR`,
+or the models packaged with the installed mantau-AI. The Android agent bundles
+the same files and checks them against the same manifest.
+
+`detection/fixtures/pose_sequences/*.json` are recorded MediaPipe poses from
+real clips (fall, walk, slow lie-down, squat, occluded fall, camera reconnect,
+plus two documented misses) with the decisions the fall rules make on them.
+The Python rules (via `replay_sequence`) and the Android agent's Kotlin port
+must replay every file identically. Record new ones with mantau-AI's
+`scripts/record_pose_sequences.py`.
+
+mantau-AI is a private repository: installing the `detection` extra needs
+GitHub credentials that can read Kita-Ngulang-Foundation/mantau-AI.
 
 ## Push vs. Telegram
 
