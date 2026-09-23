@@ -35,11 +35,60 @@ class Point(_Model):
     y: float = Field(ge=0.0, le=1.0)
 
 
+MIN_ZONE_AREA = 0.0005  # 0.05% of the frame: smaller is a mis-tap, not a zone
+
+
+def _cross(o: Point, a: Point, b: Point) -> float:
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+
+
+def _on_segment(p: Point, a: Point, b: Point) -> bool:
+    return (min(a.x, b.x) <= p.x <= max(a.x, b.x)
+            and min(a.y, b.y) <= p.y <= max(a.y, b.y))
+
+
+def _segments_touch(a: Point, b: Point, c: Point, d: Point) -> bool:
+    d1, d2 = _cross(c, d, a), _cross(c, d, b)
+    d3, d4 = _cross(a, b, c), _cross(a, b, d)
+    if ((d1 > 0 > d2) or (d1 < 0 < d2)) and ((d3 > 0 > d4) or (d3 < 0 < d4)):
+        return True
+    return ((d1 == 0 and _on_segment(a, c, d)) or (d2 == 0 and _on_segment(b, c, d))
+            or (d3 == 0 and _on_segment(c, a, b)) or (d4 == 0 and _on_segment(d, a, b)))
+
+
+def polygon_problem(polygon: list[Point]) -> str | None:
+    """Why a zone outline cannot be used, or None. Degenerate outlines
+    (repeated corners, no area) and self-intersecting ones (a bow tie has no
+    well-defined inside) are rejected."""
+    count = len(polygon)
+    if len({(p.x, p.y) for p in polygon}) != count:
+        return "polygon repeats a corner"
+    area = abs(sum(polygon[i].x * polygon[(i + 1) % count].y
+                   - polygon[(i + 1) % count].x * polygon[i].y for i in range(count))) / 2
+    for i in range(count):
+        a, b = polygon[i], polygon[(i + 1) % count]
+        for j in range(i + 1, count):
+            if j == i + 1 or (i == 0 and j == count - 1):
+                continue  # neighbours share a corner
+            if _segments_touch(a, b, polygon[j], polygon[(j + 1) % count]):
+                return "polygon edges cross"
+    if area < MIN_ZONE_AREA:
+        return "polygon has no usable area"
+    return None
+
+
 class Zone(_Model):
     zone_id: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
     kind: ZoneKind
     name: str = Field(default="", max_length=40)
     polygon: list[Point] = Field(min_length=3, max_length=32)
+
+    @model_validator(mode="after")
+    def usable_polygon(self) -> "Zone":
+        problem = polygon_problem(self.polygon)
+        if problem is not None:
+            raise ValueError(problem)
+        return self
 
 
 class FallSettings(_Model):

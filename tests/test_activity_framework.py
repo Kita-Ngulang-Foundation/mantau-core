@@ -26,9 +26,9 @@ class _Recorder:
         self.seen = []
         self.resets = 0
 
-    def update(self, observation, settings):
-        self.seen.append(observation)
-        return [FallEvent(camera_id=observation.camera_id, kind=self.kind)]
+    def update(self, step, settings):
+        self.seen.append(step)
+        return [FallEvent(camera_id=step.camera_id, kind=self.kind)]
 
     def reset(self):
         self.resets += 1
@@ -37,7 +37,7 @@ class _Recorder:
 class _Broken:
     kind = EventKind.BATHROOM_DURATION
 
-    def update(self, observation, settings):
+    def update(self, step, settings):
         raise RuntimeError("boom")
 
     def reset(self):
@@ -102,6 +102,20 @@ def test_people_in_excluded_zones_are_ignored():
     engine.update(FrameObservation(camera_id="cam-1", at=AT,
                                    people=(_person(0.3, 0.3), _person(0.8, 0.9))))
     assert [p.anchor for p in recorder.seen[0].people] == [pytest.approx((0.8, 0.9))]
+
+
+def test_bow_tie_and_sliver_zones_are_rejected():
+    bow_tie = [{"x": 0.1, "y": 0.1}, {"x": 0.5, "y": 0.5}, {"x": 0.5, "y": 0.1},
+               {"x": 0.1, "y": 0.5}]
+    sliver = [{"x": 0.1, "y": 0.1}, {"x": 0.9, "y": 0.1}, {"x": 0.5, "y": 0.1001}]
+    repeated = [{"x": 0.1, "y": 0.1}, {"x": 0.5, "y": 0.1}, {"x": 0.5, "y": 0.1},
+                {"x": 0.1, "y": 0.5}]
+    for polygon, reason in ((bow_tie, "cross"), (sliver, "area"), (repeated, "repeats")):
+        with pytest.raises(ValidationError, match=reason):
+            Zone(zone_id="z", kind=ZoneKind.FLOOR, polygon=polygon)
+    concave = [{"x": 0.1, "y": 0.1}, {"x": 0.9, "y": 0.1}, {"x": 0.9, "y": 0.9},
+               {"x": 0.5, "y": 0.4}, {"x": 0.1, "y": 0.9}]
+    assert Zone(zone_id="z", kind=ZoneKind.FLOOR, polygon=concave)
 
 
 def test_settings_command_type_is_part_of_control_v1():

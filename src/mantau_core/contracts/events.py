@@ -92,6 +92,9 @@ class FallEvent(BaseModel):
     track_id: int | None = None
     signals: dict[str, float] = Field(default_factory=dict)
     clip: ClipRef | None = None
+    # Which of the household's zones an activity event happened in (its
+    # user-chosen id, never coordinates). None for falls and unzoned events.
+    zone_id: str | None = Field(default=None, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
 
     def with_clip(self, clip: ClipRef) -> "FallEvent":
         """Return a copy with the clip attached (events are immutable once emitted)."""

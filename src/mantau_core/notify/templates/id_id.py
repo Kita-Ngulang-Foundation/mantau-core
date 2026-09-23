@@ -9,7 +9,7 @@ from mantau_core.contracts import EventKind
 _ANOMALY_LABELS: dict[EventKind, str] = {
     EventKind.STILLNESS: "diam berkepanjangan",
     EventKind.NOCTURNAL_MOVEMENT: "gerakan di malam hari",
-    EventKind.BATHROOM_DURATION: "durasi lama di kamar mandi",
+    EventKind.BATHROOM_DURATION: "tidak terlihat lama setelah masuk area kamar mandi",
 }
 
 
@@ -26,13 +26,14 @@ def fall_alert_text(*, camera_name: str, confidence: float) -> tuple[str, str]:
 _ANOMALY_TITLES: dict[EventKind, str] = {
     EventKind.STILLNESS: "Tidak bergerak terlalu lama",
     EventKind.NOCTURNAL_MOVEMENT: "Aktivitas malam tidak biasa",
-    EventKind.BATHROOM_DURATION: "Terlalu lama di kamar mandi",
+    # A prolonged absence after entering the bathroom area, never an asserted incident.
+    EventKind.BATHROOM_DURATION: "Belum terlihat keluar dari area kamar mandi",
 }
 
 _ANOMALY_ADVICE: dict[EventKind, str] = {
     EventKind.STILLNESS: "Segera periksa kondisinya.",
     EventKind.NOCTURNAL_MOVEMENT: "Ketuk untuk meninjau.",
-    EventKind.BATHROOM_DURATION: "Mohon segera periksa.",
+    EventKind.BATHROOM_DURATION: "Mohon periksa apakah semuanya baik-baik saja.",
 }
 
 
@@ -47,7 +48,11 @@ def anomaly_alert_text(*, camera_name: str, kind: EventKind,
     label = _ANOMALY_LABELS.get(kind, "aktivitas tidak biasa")
     title = f"{_ANOMALY_TITLES.get(kind, 'Peringatan')} — {camera_name}"
     advice = _ANOMALY_ADVICE.get(kind, "Ketuk untuk meninjau.")
-    body = f"Sistem mendeteksi {label}{_minutes(duration_s)} di {camera_name}. {advice}"
+    if kind is EventKind.BATHROOM_DURATION:
+        body = (f"Belum terlihat kembali{_minutes(duration_s)} setelah masuk area kamar mandi "
+                f"di {camera_name}. {advice}")
+    else:
+        body = f"Sistem mendeteksi {label}{_minutes(duration_s)} di {camera_name}. {advice}"
     return title, body
 
 
