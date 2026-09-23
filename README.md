@@ -45,6 +45,21 @@ Old readers continue using the unchanged contracts and ignore the new module.
 Rolling back consumers needs no data conversion because schema v1 is additive;
 do not delete or rename old contracts during the mixed-version window.
 
+## Server inference contract v1
+
+`mantau_core.contracts.inference` defines `POST /agents/{agent_id}/inference`,
+used when an agent cannot run the fall detector itself (model missing or
+broken, too slow, or the family chose CLOUD/HYBRID): the agent uploads sampled
+JPEG frames and the server runs the same detector. The module docstring is the
+specification: headers, the versioned HMAC message (`signing_message`, prefix
+`mantau-inference-v1`, so a live-frame or recording signature can never be
+replayed there), idempotency by frame id, per-session ordering by frame
+timestamp, freshness by capture time, HYBRID correlation by event ids, and
+retention (frames are never stored; only results are).
+`InferenceCapability`, `InferenceResult` and `InferenceConfirmation` are the
+response shapes. `fixtures/v1/inference_request.json` is a golden signature
+vector shared with the Android agent's tests.
+
 ## Install
 
 ```powershell

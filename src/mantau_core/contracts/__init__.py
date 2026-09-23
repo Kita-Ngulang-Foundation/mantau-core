@@ -20,8 +20,12 @@ from .control import (
     CommandType, ControlCommand, DiscoveredCameraResult, InferenceMode,
     InferenceSelection,
 )
+from .inference import InferenceCapability, InferenceConfirmation, InferenceResult
 
 __all__ = [
+    "InferenceCapability",
+    "InferenceConfirmation",
+    "InferenceResult",
     "CameraRef",
     "Credentials",
     "StreamProfile",
