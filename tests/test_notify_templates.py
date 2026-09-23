@@ -23,3 +23,25 @@ def test_render_dispatches_anomaly_events_to_anomaly_copy():
     event = FallEvent(camera_id="cam-1", kind=EventKind.NOCTURNAL_MOVEMENT)
     title, body = render(event, camera_name="Kamar Ibu")
     assert "gerakan di malam hari" in body
+
+
+def test_each_anomaly_kind_has_its_own_title_and_duration():
+    cases = {
+        EventKind.STILLNESS: "Tidak bergerak terlalu lama",
+        EventKind.NOCTURNAL_MOVEMENT: "Aktivitas malam tidak biasa",
+        EventKind.BATHROOM_DURATION: "Terlalu lama di kamar mandi",
+    }
+    for kind, title_text in cases.items():
+        event = FallEvent(camera_id="cam-1", kind=kind, signals={"duration_s": 1500.0})
+        title, body = render(event, camera_name="Kamar Ibu")
+        assert title == f"{title_text} — Kamar Ibu"
+        assert "25 menit" in body
+
+
+def test_default_severity_per_kind():
+    from mantau_core.contracts import Severity, default_severity
+
+    assert default_severity(EventKind.FALL) is Severity.CRITICAL
+    assert default_severity(EventKind.STILLNESS) is Severity.CRITICAL
+    assert default_severity(EventKind.BATHROOM_DURATION) is Severity.WARNING
+    assert default_severity(EventKind.NOCTURNAL_MOVEMENT) is Severity.WARNING

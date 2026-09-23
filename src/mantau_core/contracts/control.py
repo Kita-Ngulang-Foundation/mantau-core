@@ -66,6 +66,8 @@ class CommandType(str, Enum):
     SET_INFERENCE_MODE = "set_inference_mode"
     RESTART = "restart"
     RECONFIGURE = "reconfigure"
+    # Payload: {"camera_id": ..., "settings": DetectionSettings JSON}.
+    APPLY_DETECTION_SETTINGS = "apply_detection_settings"
 
 
 class CommandState(str, Enum):

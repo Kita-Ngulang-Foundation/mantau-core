@@ -9,6 +9,6 @@ docstring before touching it.
 """
 
 from .null import NullDetector
-from .protocol import Detector
+from .protocol import Detector, PerceivingDetector
 
-__all__ = ["Detector", "NullDetector"]
+__all__ = ["Detector", "NullDetector", "PerceivingDetector"]

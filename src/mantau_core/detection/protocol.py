@@ -14,6 +14,7 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 
 from mantau_core.contracts import FallEvent
+from mantau_core.activity.observations import Perception
 
 
 @runtime_checkable
@@ -28,4 +29,16 @@ class Detector(Protocol):
 
     def close(self) -> None:
         """Release any model/session resources. Idempotent."""
+        ...
+
+
+@runtime_checkable
+class PerceivingDetector(Detector, Protocol):
+    """A detector that also reports who is where, for the activity rules.
+
+    `perceive` replaces `push` for callers that run an `ActivityEngine`; it
+    must return the same fall events `push` would have.
+    """
+
+    def perceive(self, frame: np.ndarray, ts_ms: int) -> Perception:
         ...

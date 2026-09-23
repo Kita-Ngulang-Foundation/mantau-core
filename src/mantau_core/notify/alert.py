@@ -12,13 +12,15 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from mantau_core.contracts import FallEvent, Severity
+from mantau_core.contracts import EventKind, FallEvent, Severity
 
 
 class Alert(BaseModel):
     event_id: str
     camera_id: str
     camera_name: str
+    # Lets the app pick icon/copy per detection without parsing the title.
+    kind: EventKind = EventKind.FALL
     severity: Severity
     title: str
     body: str
@@ -32,10 +34,11 @@ class Alert(BaseModel):
             event_id=event.event_id,
             camera_id=event.camera_id,
             camera_name=camera_name,
+            kind=event.kind,
             severity=event.severity,
             title=title,
             body=body,
             deep_link=f"mantau://events/{event.event_id}",
-            collapse_key=f"fall:{event.event_id}",
+            collapse_key=f"{event.kind.value}:{event.event_id}",
             occurred_at=event.occurred_at,
         )

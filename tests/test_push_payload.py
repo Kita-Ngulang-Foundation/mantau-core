@@ -46,3 +46,14 @@ def test_apns_collapse_id_is_truncated_to_64_bytes():
     long_alert = alert.model_copy(update={"collapse_key": "x" * 100})
     msg = build_fcm_message(token="t", alert=long_alert)["message"]
     assert len(msg["apns"]["headers"]["apns-collapse-id"]) == 64
+
+
+def test_payload_carries_the_event_kind_and_collapses_per_event():
+    from mantau_core.contracts import EventKind
+
+    event = FallEvent(camera_id="cam-1", kind=EventKind.BATHROOM_DURATION)
+    alert = Alert.from_event(event, camera_name="Kamar mandi", title="t", body="b")
+    msg = build_fcm_message(token="t", alert=alert)["message"]
+    assert msg["data"]["kind"] == "bathroom_duration"
+    assert msg["android"]["notification"]["tag"] == f"bathroom_duration:{event.event_id}"
+    assert build_fcm_message(token="t", alert=_alert())["message"]["data"]["kind"] == "fall"

@@ -23,10 +23,31 @@ def fall_alert_text(*, camera_name: str, confidence: float) -> tuple[str, str]:
     return title, body
 
 
-def anomaly_alert_text(*, camera_name: str, kind: EventKind) -> tuple[str, str]:
+_ANOMALY_TITLES: dict[EventKind, str] = {
+    EventKind.STILLNESS: "Tidak bergerak terlalu lama",
+    EventKind.NOCTURNAL_MOVEMENT: "Aktivitas malam tidak biasa",
+    EventKind.BATHROOM_DURATION: "Terlalu lama di kamar mandi",
+}
+
+_ANOMALY_ADVICE: dict[EventKind, str] = {
+    EventKind.STILLNESS: "Segera periksa kondisinya.",
+    EventKind.NOCTURNAL_MOVEMENT: "Ketuk untuk meninjau.",
+    EventKind.BATHROOM_DURATION: "Mohon segera periksa.",
+}
+
+
+def _minutes(duration_s: float | None) -> str:
+    if duration_s is None or duration_s <= 0:
+        return ""
+    return f" selama {max(1, round(duration_s / 60))} menit"
+
+
+def anomaly_alert_text(*, camera_name: str, kind: EventKind,
+                       duration_s: float | None = None) -> tuple[str, str]:
     label = _ANOMALY_LABELS.get(kind, "aktivitas tidak biasa")
-    title = f"Peringatan — {camera_name}"
-    body = f"Sistem mendeteksi {label} di {camera_name}. Ketuk untuk meninjau."
+    title = f"{_ANOMALY_TITLES.get(kind, 'Peringatan')} — {camera_name}"
+    advice = _ANOMALY_ADVICE.get(kind, "Ketuk untuk meninjau.")
+    body = f"Sistem mendeteksi {label}{_minutes(duration_s)} di {camera_name}. {advice}"
     return title, body
 
 

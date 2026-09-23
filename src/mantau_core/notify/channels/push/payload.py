@@ -29,6 +29,7 @@ def build_fcm_message(*, token: str, alert: Alert) -> dict:
                 "camera_id": alert.camera_id,
                 "deep_link": alert.deep_link,
                 "severity": alert.severity.value,
+                "kind": alert.kind.value,
             },
             "android": {
                 "priority": "high",

@@ -44,6 +44,21 @@ class Severity(str, Enum):
     CRITICAL = "critical"
 
 
+DEFAULT_SEVERITY: dict[EventKind, Severity] = {
+    EventKind.FALL: Severity.CRITICAL,
+    # Not moving for too long can be fainting or a stroke: as urgent as a fall.
+    EventKind.STILLNESS: Severity.CRITICAL,
+    EventKind.BATHROOM_DURATION: Severity.WARNING,
+    EventKind.NOCTURNAL_MOVEMENT: Severity.WARNING,
+}
+
+
+def default_severity(kind: EventKind) -> Severity:
+    """Starting urgency for a kind. Detectors may raise it (e.g. a bathroom
+    visit that keeps growing becomes CRITICAL) but should not lower a fall."""
+    return DEFAULT_SEVERITY.get(kind, Severity.WARNING)
+
+
 class ClipRef(BaseModel):
     """A short annotated review clip around the event, generated best-effort.
 
