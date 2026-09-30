@@ -120,13 +120,17 @@ def scenarios() -> list[tuple[str, str, dict, Scene]]:
     lying = lambda t, where=ELSEWHERE, **k: person(t, where, "lying", **k)  # noqa: E731
     standing = lambda t, where=MIDDLE, **k: person(t, where, "standing", **k)  # noqa: E731
 
-    s.append(("floor_lying_warning_then_critical",
+    # The floor pause scenarios pin floor_minutes=2: their point is that the paused
+    # time is not counted, so the page must fall after the pause.
+    floor_2min = settings(stillness={"floor_minutes": 2.0})
+    s.append(("floor_lying_pages_critical",
               "Lying on the floor (no floor zone drawn: outside bed/seating counts) for 5 min "
-              "with floor_minutes=2: warning at 2 min, critical at 4 min, once each.",
+              "with the default floor_minutes=0.5: one critical page at 30 s, nothing after.",
               settings(), Scene(DAY).hold(10, standing(1, ELSEWHERE)).hold(300, lying(1))))
     s.append(("floor_zone_restricts_floor",
               "With a floor zone drawn, lying outside it (and outside bed/seating) is not "
-              "'on the floor'; lying inside it is.",
+              "'on the floor'; lying inside it is (critical at 30 s with the default "
+              "floor_minutes=0.5).",
               settings(zones=[BED, SOFA, DOOR, FLOOR]),
               Scene(DAY).hold(150, lying(1, ELSEWHERE)).hold(150, lying(2, ON_FLOOR))))
     s.append(("sleeping_in_bed_is_rest",
@@ -152,25 +156,29 @@ def scenarios() -> list[tuple[str, str, dict, Scene]]:
               .hold(240, standing(1, (0.3, 0.3)))))
     s.append(("occlusion_pauses_and_keeps_the_track",
               "Lying on the floor; after 60 s hidden for 20 s (lost), then found again under a new "
-              "detector track id nearby: same local id, the hidden time is not counted.",
-              settings(), Scene(DAY).hold(60, lying(1)).hold(20).hold(3, lying(7))
+              "detector track id nearby: same local id, the hidden time is not counted "
+              "(floor_minutes=2: the critical page comes at 120 s counted).",
+              floor_2min, Scene(DAY).hold(60, lying(1)).hold(20).hold(3, lying(7))
               .hold(120, lying(7))))
     s.append(("low_confidence_pauses",
               "Low landmark confidence for 90 s in the middle of lying on the floor: those "
-              "seconds are not counted.",
-              settings(), Scene(DAY).hold(60, lying(1)).hold(90, lying(1, confidence=0.2))
+              "seconds are not counted (floor_minutes=2: the critical page comes at 120 s "
+              "counted).",
+              floor_2min, Scene(DAY).hold(60, lying(1)).hold(90, lying(1, confidence=0.2))
               .hold(120, lying(1))))
     s.append(("camera_outage_pauses",
               "Camera drops for 5 minutes while someone lies on the floor: the outage is not "
-              "counted and does not trigger anything by itself.",
-              settings(), Scene(DAY).hold(60, lying(1)).camera_lost(300).hold(90, lying(1))))
+              "counted and does not trigger anything by itself (floor_minutes=2: the critical "
+              "page comes at 120 s counted).",
+              floor_2min, Scene(DAY).hold(60, lying(1)).camera_lost(300).hold(90, lying(1))))
     s.append(("clock_regression_pauses",
               "The clock jumps back 10 minutes: that step counts nothing, later steps count "
-              "from the new time.",
-              settings(), Scene(DAY).hold(60, lying(1)).jump(-600).hold(80, lying(1))))
+              "from the new time (floor_minutes=2: the critical page comes at 120 s counted).",
+              floor_2min, Scene(DAY).hold(60, lying(1)).jump(-600).hold(80, lying(1))))
     s.append(("visitor_does_not_mask_a_fall",
               "Someone lies on the floor while a visitor walks around: each person is timed "
-              "separately; the moving visitor raises nothing.",
+              "separately; the lying person pages critical at 30 s (default "
+              "floor_minutes=0.5), the moving visitor raises nothing.",
               settings(),
               Scene(DAY).hold(200, lying(1), standing(2, MIDDLE, motion=0.01))))
     s.append(("excluded_zone_is_ignored",
