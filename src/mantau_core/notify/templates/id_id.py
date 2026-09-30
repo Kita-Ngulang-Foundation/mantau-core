@@ -40,11 +40,20 @@ _ANOMALY_ADVICE: dict[EventKind, str] = {
 def _minutes(duration_s: float | None) -> str:
     if duration_s is None or duration_s <= 0:
         return ""
+    if duration_s < 60:
+        return f" selama {max(1, round(duration_s))} detik"
     return f" selama {max(1, round(duration_s / 60))} menit"
 
 
 def anomaly_alert_text(*, camera_name: str, kind: EventKind,
-                       duration_s: float | None = None) -> tuple[str, str]:
+                       duration_s: float | None = None,
+                       on_floor: bool = False) -> tuple[str, str]:
+    if on_floor and kind is EventKind.STILLNESS:
+        # The prolonged-position rule's floor branch: as urgent as a fall.
+        title = f"Terbaring di lantai — {camera_name}"
+        body = (f"Sistem mendeteksi seseorang terbaring di lantai{_minutes(duration_s)} "
+                f"di {camera_name}. Segera periksa sekarang.")
+        return title, body
     label = _ANOMALY_LABELS.get(kind, "aktivitas tidak biasa")
     title = f"{_ANOMALY_TITLES.get(kind, 'Peringatan')} — {camera_name}"
     advice = _ANOMALY_ADVICE.get(kind, "Ketuk untuk meninjau.")

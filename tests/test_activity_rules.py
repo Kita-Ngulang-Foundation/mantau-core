@@ -19,7 +19,8 @@ from mantau_core.contracts import DetectionSettings, Envelope, EventKind
 FIXTURES = Path(str(resources.files("mantau_core.activity").joinpath(
     "fixtures/activity_sequences")))
 FILES = sorted(FIXTURES.glob("*.json"))
-ALLOWED_SIGNALS = {"duration_s", "movement", "confidence", "bed_exits", "transitions"}
+ALLOWED_SIGNALS = {"duration_s", "movement", "confidence", "bed_exits", "transitions",
+                   "floor"}
 
 
 def _load(name: str) -> dict:
@@ -72,11 +73,10 @@ def test_replay_matches_the_golden_events(path):
 
 # -- immobility vs sleep vs sitting ---------------------------------------------------
 
-def test_lying_on_the_floor_warns_then_escalates():
-    assert _kinds("floor_lying_warning_then_critical") == [
-        ("stillness", "warning"), ("stillness", "critical")]
-    first = _load("floor_lying_warning_then_critical")["expected"][0]
-    assert first["signals"]["duration_s"] == pytest.approx(120, abs=1)
+def test_lying_on_the_floor_pages_critical():
+    assert _kinds("floor_lying_pages_critical") == [("stillness", "critical")]
+    first = _load("floor_lying_pages_critical")["expected"][0]
+    assert first["signals"]["duration_s"] == pytest.approx(30, abs=1)
 
 
 def test_sleep_and_sitting_are_rest():
@@ -103,7 +103,8 @@ def test_visitors_and_excluded_zones():
 
 
 def test_occlusion_low_confidence_outage_and_regression_pause_instead_of_count():
-    # Each lies on the floor for 120 counted seconds; the paused time is on top.
+    # Each lies on the floor for 120 counted seconds (floor_minutes pinned to 2);
+    # the paused time is on top.
     expected = {
         "occlusion_pauses_and_keeps_the_track": 20,   # hidden
         "low_confidence_pauses": 90,                  # not trusted
@@ -113,13 +114,13 @@ def test_occlusion_low_confidence_outage_and_regression_pause_instead_of_count()
         fixture = _load(name)
         start = _at(fixture["steps"][0]["at"])
         event = fixture["expected"][0]
-        assert event["kind"] == "stillness" and event["severity"] == "warning", name
+        assert event["kind"] == "stillness" and event["severity"] == "critical", name
         assert (_at(event["occurred_at"]) - start).total_seconds() == pytest.approx(
             120 + paused, abs=2), name
     occlusion = _load("occlusion_pauses_and_keeps_the_track")["expected"][0]
     assert occlusion["track_id"] == 1  # the new detector track kept the local id
     regression = _load("clock_regression_pauses")["expected"]
-    assert [(e["kind"], e["severity"]) for e in regression] == [("stillness", "warning")]
+    assert [(e["kind"], e["severity"]) for e in regression] == [("stillness", "critical")]
 
 
 def test_registry_pauses_on_regression_gap_and_outage():
@@ -194,7 +195,7 @@ def test_dst_night_uses_local_window_and_real_durations():
 # -- restart, duplicate delivery, privacy ----------------------------------------------------
 
 def test_agent_restart_starts_clean_and_ids_are_deterministic():
-    fixture = _load("floor_lying_warning_then_critical")
+    fixture = _load("floor_lying_pages_critical")
     steps = fixture["steps"]
     whole = [e.event_id for e in _replay(fixture)]
     assert whole == [e.event_id for e in _replay(fixture)]

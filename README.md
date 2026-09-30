@@ -51,9 +51,13 @@ do not delete or rename old contracts during the mixed-version window.
 camera's `DetectionSettings` (zones, thresholds, night window, timezone):
 
 - **Prolonged position** (`STILLNESS`): a confident, visible person lying on
-  the floor past `floor_minutes`, or not moving elsewhere past
-  `other_minutes`. Bed and seating zones are rest, and so is the night window
-  for the "not moving" case. Warning at the threshold, critical at twice it.
+  the floor past `floor_minutes` (default 0.5, the minimum), or not moving
+  elsewhere past `other_minutes`. Bed and seating zones are rest, and so is
+  the night window for the "not moving" case (lying on the floor is reported
+  at night too). Lying on the floor pages once per episode, CRITICAL like a
+  fall, with its own alert text ("Terbaring di lantai"); its event carries the
+  signal `floor: 1.0`. Not moving elsewhere warns at the threshold and turns
+  critical at twice it.
 - **Nocturnal movement**: inside the household-local night window only; more
   bed exits than `max_bed_exits`, out of bed (and in view) longer than
   `out_of_bed_minutes`, or wandering between zones. A single bathroom trip

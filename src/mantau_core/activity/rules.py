@@ -30,7 +30,8 @@ from .geometry import zone_at
 from .observations import Posture
 from .tracking import Step, TrackedPerson
 
-# A warning at the configured minutes; critical once twice as long has passed.
+# A warning at the configured minutes; critical once twice as long has passed
+# (every graded rule except the floor branch, which pages critical at once).
 CRITICAL_FACTOR = 2.0
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
@@ -103,8 +104,11 @@ class ProlongedPositionRule:
     Bed and seating zones are normal rest, and so is the night window for the
     "not moving" case (lying on the floor is still reported at night). Where
     the household drew no floor zone, lying anywhere outside bed and seating
-    counts as the floor. Warning at the threshold, critical at twice it, each
-    once per episode."""
+    counts as the floor. Lying on the floor pages once per episode, CRITICAL
+    like a fall, as soon as `floor_minutes` has passed; its event carries the
+    signal `floor: 1.0` so the alert text can say so. Not moving elsewhere
+    warns at `other_minutes` and turns critical at twice it, each once per
+    episode."""
 
     kind = EventKind.STILLNESS
 
@@ -151,9 +155,11 @@ class ProlongedPositionRule:
             state.floor_s += step.dt
             state.floor_moved += obs.motion
             state.upright_s = 0.0
-            for severity in _levels(state.floor_s, floor_s, state.floor_fired):
-                events.append(self._event(step, person, severity, "floor", state.floor_start,
-                                          state.floor_s, state.floor_moved, state.floor_zone))
+            if state.floor_s >= floor_s and "critical" not in state.floor_fired:
+                state.floor_fired.add("critical")
+                events.append(self._event(step, person, Severity.CRITICAL, "floor",
+                                          state.floor_start, state.floor_s, state.floor_moved,
+                                          state.floor_zone))
         elif state.floor_start is not None:
             if resting:
                 state.floor_start = None
@@ -184,10 +190,13 @@ class ProlongedPositionRule:
     def _event(self, step: Step, person: TrackedPerson, severity: Severity, branch: str,
                started: datetime, duration_s: float, moved: float,
                zone_id: str | None) -> FallEvent:
+        signals = {"duration_s": round(duration_s, 1), "movement": round(moved, 4),
+                   "confidence": round(person.observation.confidence, 3)}
+        if branch == "floor":
+            signals["floor"] = 1.0
         return make_event(
             step, self.kind, severity, f"{branch}:{person.local_id}@{epoch_ms(started)}",
-            signals={"duration_s": round(duration_s, 1), "movement": round(moved, 4),
-                     "confidence": round(person.observation.confidence, 3)},
+            signals=signals,
             confidence=person.observation.confidence, track_id=person.local_id, zone_id=zone_id)
 
 

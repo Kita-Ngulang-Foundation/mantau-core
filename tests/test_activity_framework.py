@@ -47,7 +47,7 @@ class _Broken:
 def test_defaults_are_safe_and_complete():
     settings = DetectionSettings()
     assert settings.timezone == "Asia/Jakarta"
-    assert settings.stillness.floor_minutes == 2.0
+    assert settings.stillness.floor_minutes == 0.5
     assert settings.nocturnal.start == time(22, 0)
     assert settings.bathroom.critical_minutes >= settings.bathroom.warning_minutes
     assert DetectionSettings.model_validate_json(settings.model_dump_json()) == settings
