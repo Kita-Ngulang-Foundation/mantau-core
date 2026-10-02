@@ -13,8 +13,8 @@
       "description": "Fall confirmation classifier (HistGradientBoosting) exported from fall_classifier.joblib with sklearn-onnx"
     },
     "fall_classifier.onnx.json": {
-      "sha256": "0ab80db181c74dd6b80ef6baedae8d268c9b137cfb2be71c3f8c061679641d81",
-      "bytes": 1672,
+      "sha256": "d99f5824bfe9c3f7e125dd97cb4126df229ce2b5d5c5cf62bd634ea01a8379a9",
+      "bytes": 2134,
       "description": "Feature schema and decision threshold for fall_classifier.onnx"
     },
     "benchmark_person.jpg": {
