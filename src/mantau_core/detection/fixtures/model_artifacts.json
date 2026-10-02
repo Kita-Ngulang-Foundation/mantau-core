@@ -8,13 +8,13 @@
       "description": "MediaPipe Pose Landmarker (lite, float16), Apache-2.0, from storage.googleapis.com/mediapipe-models"
     },
     "fall_classifier.onnx": {
-      "sha256": "6af49ccbb977de12e9ddb337aadcde09ed0b625be6c69bbb6348635542611d05",
-      "bytes": 162472,
+      "sha256": "a34ea596142335ae4a93eda99ce6af61db17e035abd63aebf4170de5d6a0114c",
+      "bytes": 169389,
       "description": "Fall confirmation classifier (HistGradientBoosting) exported from fall_classifier.joblib with sklearn-onnx"
     },
     "fall_classifier.onnx.json": {
-      "sha256": "b361981429c28ce868443f444644263c045b4b7332f8666f13520782877b0aaf",
-      "bytes": 1350,
+      "sha256": "0ab80db181c74dd6b80ef6baedae8d268c9b137cfb2be71c3f8c061679641d81",
+      "bytes": 1672,
       "description": "Feature schema and decision threshold for fall_classifier.onnx"
     },
     "benchmark_person.jpg": {

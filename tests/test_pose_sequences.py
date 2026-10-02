@@ -87,8 +87,8 @@ def test_reconnect_gap_then_fall_fires_once_after_the_gap():
 def test_known_limitations_are_recorded_not_hidden():
     # The plain fall downsampled to 10 fps is still confirmed once (see fixture notes).
     assert len(_events("fall_gmdcsa24_s1_fall05_10fps")) == 1
-    # Lying down on a bed is confirmed as a fall, twice, by the current rules + classifier.
-    assert len(_events("liedown_bed_gmdcsa24_s2_adl12")) == 2
+    # Lying down on a bed fires twice on the rules alone; the classifier rejects both.
+    assert len(_events("liedown_bed_gmdcsa24_s2_adl12")) == 0
 
 
 # -- replay against the Python implementation ---------------------------------------
