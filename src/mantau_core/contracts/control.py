@@ -132,6 +132,10 @@ class CameraRequestMetadata(ControlModel):
     main_path: str = "/stream1"
     sub_path: str | None = None
     username_present: bool = False
+    # The agent finds the stream paths itself (ONVIF GetStreamUri, then the
+    # paths common camera brands use) and reports the ones it chose; the
+    # main/sub paths above are then only a first guess.
+    auto_detect: bool = False
 
     @field_validator("host")
     @classmethod
