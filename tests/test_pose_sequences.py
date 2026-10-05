@@ -54,26 +54,26 @@ def test_schema(path):
 # -- scenario regression (decisions recorded from real clips) ---------------------
 
 def test_fall_fires_exactly_once():
-    assert len(_events("fall_ybclass_video1")) == 1
-    assert len(_events("fall_urfall_02")) == 1
+    assert len(_events("fall_gmdcsa24_s1_fall05")) == 1
+    assert len(_events("fall_caucafall_s1_fallbackwards")) == 1
 
 
 def test_walking_does_not_fire():
-    assert _events("walk_ybclass_video5") == []
+    assert _events("walk_gmdcsa24_s1_adl08") == []
 
 
 def test_slow_lie_down_does_not_fire():
-    assert _events("slow_liedown_urfall_adl") == []
-    assert _events("slow_liedown_urfall_adl", "rules_only") == []
+    assert _events("slow_liedown_gmdcsa24_s3_adl08") == []
+    assert _events("slow_liedown_gmdcsa24_s3_adl08", "rules_only") == []
 
 
-def test_squat_does_not_fire():
-    assert _events("squat_urfall_adl") == []
+def test_pick_up_does_not_fire():
+    assert _events("pickup_caucafall_s1_pickupobject") == []
 
 
 def test_occluded_legs_still_fire():
-    """Lower 35% of the frame hidden: the fall is still confirmed once."""
-    assert len(_events("occluded_fall_ybclass_video1")) == 1
+    """Synthetic lower-body occluder: the fall is still confirmed once."""
+    assert len(_events("occluded_fall_gmdcsa24_s1_fall05")) == 1
 
 
 def test_reconnect_gap_then_fall_fires_once_after_the_gap():
@@ -85,10 +85,10 @@ def test_reconnect_gap_then_fall_fires_once_after_the_gap():
 
 
 def test_known_limitations_are_recorded_not_hidden():
-    # 10 fps breaks track continuity during a fast fall (see fixture notes).
-    assert _events("fall_ybclass_video3_10fps") == []
-    # Lying down on a sofa is confirmed as a fall by the current rules + classifier.
-    assert len(_events("liedown_sofa_urfall_adl11")) == 1
+    # The plain fall downsampled to 10 fps is still confirmed once (see fixture notes).
+    assert len(_events("fall_gmdcsa24_s1_fall05_10fps")) == 1
+    # Lying down on a bed fires twice on the rules alone; the classifier rejects both.
+    assert len(_events("liedown_bed_gmdcsa24_s2_adl12")) == 0
 
 
 # -- replay against the Python implementation ---------------------------------------

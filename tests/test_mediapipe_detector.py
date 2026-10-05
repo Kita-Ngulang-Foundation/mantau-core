@@ -1,8 +1,8 @@
 """MediapipeDetector against the real mantau-AI package (the `detection` extra).
 
 Skipped when mantau is not installed. Clip-based tests also need the
-Y-B-Class clips on disk (MANTAU_TEST_CLIPS, default: the sibling mantau-AI
-checkout's data/falls), which are not committed anywhere.
+GMDCSA24 clips on disk (MANTAU_TEST_CLIPS, default: the sibling mantau-AI
+checkout's datasets/gmdcsa24), which are not committed anywhere.
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ from mantau_core.detection.mediapipe_adapter import (  # noqa: E402
 )
 
 CLIPS = Path(os.environ.get(
-    "MANTAU_TEST_CLIPS", Path(__file__).resolve().parents[2] / "mantau-AI" / "data" / "falls"))
+    "MANTAU_TEST_CLIPS",
+    Path(__file__).resolve().parents[2] / "mantau-AI" / "datasets" / "gmdcsa24"))
 NOW = datetime(2026, 9, 23, 7, 0, tzinfo=timezone.utc)
 
 
@@ -87,7 +88,7 @@ def test_model_dir_from_environment(tmp_path, monkeypatch):
 
 def test_fall_clip_becomes_one_contract_event(detector):
     events = []
-    for image, ts in _frames(_clip("video_1.mp4")):
+    for image, ts in _frames(_clip("Subject 1/Fall/01.mp4")):
         events += detector.perceive(image, ts).events
     assert len(events) == 1
     event = events[0]
@@ -103,7 +104,7 @@ def test_push_and_perceive_agree_on_falls():
     perceive_det = MediapipeDetector("cam-1", clock=lambda: NOW)
     try:
         pushed, perceived = [], []
-        for image, ts in _frames(_clip("video_1.mp4")):
+        for image, ts in _frames(_clip("Subject 1/Fall/01.mp4")):
             pushed += [(e.track_id, e.confidence) for e in push_det.push(image, ts)]
             perceived += [(e.track_id, e.confidence)
                           for e in perceive_det.perceive(image, ts).events]
@@ -115,7 +116,7 @@ def test_push_and_perceive_agree_on_falls():
 
 def test_observations_use_activity_types(detector):
     observations = []
-    for image, ts in _frames(_clip("video_1.mp4")):
+    for image, ts in _frames(_clip("Subject 1/Fall/01.mp4")):
         perception = detector.perceive(image, ts)
         if perception.observation is not None:
             observations.append(perception.observation)
@@ -128,7 +129,7 @@ def test_observations_use_activity_types(detector):
 
 
 def test_walking_clip_never_fires(detector):
-    for image, ts in _frames(_clip("video_5.mp4")):
+    for image, ts in _frames(_clip("Subject 1/ADL/08.mp4")):
         assert detector.perceive(image, ts).events == []
 
 
