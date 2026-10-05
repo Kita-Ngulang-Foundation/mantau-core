@@ -16,6 +16,7 @@ def render(event: FallEvent, *, camera_name: str) -> tuple[str, str]:
     return id_id.anomaly_alert_text(
         camera_name=camera_name, kind=event.kind,
         duration_s=event.signals.get("duration_s"),
+        on_floor=event.signals.get("floor") == 1.0,
     )
 
 
