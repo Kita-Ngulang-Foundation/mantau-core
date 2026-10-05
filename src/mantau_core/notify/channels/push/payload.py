@@ -25,6 +25,7 @@ def build_fcm_message(*, token: str, alert: Alert) -> dict:
             "token": token,
             "notification": {"title": alert.title, "body": alert.body},
             "data": {
+                **({"household_id": alert.household_id} if alert.household_id else {}),
                 "event_id": alert.event_id,
                 "camera_id": alert.camera_id,
                 "deep_link": alert.deep_link,

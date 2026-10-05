@@ -66,6 +66,7 @@ class CommandType(str, Enum):
     SET_INFERENCE_MODE = "set_inference_mode"
     RESTART = "restart"
     RECONFIGURE = "reconfigure"
+    REMOVE_CAMERA = "remove_camera"
     # Payload: {"camera_id": ..., "settings": DetectionSettings JSON}.
     APPLY_DETECTION_SETTINGS = "apply_detection_settings"
 
@@ -115,6 +116,8 @@ class AgentStatus(ControlModel):
     camera_connectivity: Literal["connected", "disconnected", "unknown"] = "unknown"
     last_heartbeat_at: datetime | None = None
     last_frame_at: datetime | None = None
+    last_inference_at: datetime | None = None
+    last_server_contact_at: datetime | None = None
     health_explanation: str | None = None
 
 
