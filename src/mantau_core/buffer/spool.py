@@ -1,4 +1,4 @@
-"""A durable, TTL-evicting queue backed by SQLite.
+"""A durable, capacity-bounded, TTL-evicting queue backed by SQLite.
 
 SQLite (not an in-memory list) is the point: the agent's uplink can die and
 restart mid-outage — a fall detected right before a tunnel drop must still be
@@ -23,11 +23,47 @@ class SpoolItem:
     attempts: int
 
 
+class SpoolCapacityError(RuntimeError):
+    """A write was rejected; all previously queued items remain unchanged."""
+
+    def __init__(
+        self, item_id: str, *, rows: int, size_bytes: int,
+        projected_rows: int, projected_bytes: int, max_rows: int, max_bytes: int,
+    ) -> None:
+        self.item_id = item_id
+        self.rows = rows
+        self.size_bytes = size_bytes
+        self.projected_rows = projected_rows
+        self.projected_bytes = projected_bytes
+        self.max_rows = max_rows
+        self.max_bytes = max_bytes
+        super().__init__(
+            f"Spool capacity exceeded: {projected_rows}/{max_rows} rows, "
+            f"{projected_bytes}/{max_bytes} bytes; write rejected"
+        )
+
+
 class DurableSpool:
-    def __init__(self, path: str | Path, *, ttl_s: float = 300.0) -> None:
-        """`ttl_s` is how long an unacked item is kept — the brief's "buffer
-        recent frame/event data locally for a few minutes" (default 5 min)."""
+    DEFAULT_MAX_ROWS = 10_000
+    DEFAULT_MAX_BYTES = 16 * 1024 * 1024
+
+    def __init__(
+        self, path: str | Path, *, ttl_s: float = 300.0,
+        max_rows: int = DEFAULT_MAX_ROWS, max_bytes: int = DEFAULT_MAX_BYTES,
+    ) -> None:
+        """Keep unacked items for `ttl_s` (default 5 minutes).
+
+        Capacity counts UTF-8 IDs and payloads, excluding SQLite/WAL overhead.
+        Overflow rejects the incoming write instead of dropping pending items.
+        Reopening an existing database with tighter limits preserves its rows;
+        ack or explicit TTL eviction must free space before further writes.
+        """
+        for name, value in (("max_rows", max_rows), ("max_bytes", max_bytes)):
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"{name} must be a positive integer")
         self.ttl_s = ttl_s
+        self.max_rows = max_rows
+        self.max_bytes = max_bytes
         self._lock = threading.Lock()
         path = Path(path)
         if str(path) != ":memory:":
@@ -45,14 +81,39 @@ class DurableSpool:
         self._conn.commit()
 
     def put(self, item_id: str, payload: str, *, at: float | None = None) -> None:
+        """Persist a write, or raise SpoolCapacityError without changing rows.
+
+        No implicit TTL eviction happens here: callers can account for expired
+        items using the existing `evict_expired` result before retrying a write.
+        """
         ts = at if at is not None else time.time()
-        with self._lock:
+        item_bytes = len(item_id.encode("utf-8")) + len(payload.encode("utf-8"))
+        with self._lock, self._conn:
+            # Serialize capacity checks across processes/connections as well as
+            # threads, so two simultaneous producers cannot exceed a limit.
+            self._conn.execute("BEGIN IMMEDIATE")
+            rows, size_bytes = self._conn.execute(
+                "SELECT COUNT(*), COALESCE(SUM("
+                "length(CAST(id AS BLOB)) + length(CAST(payload AS BLOB))), 0) "
+                "FROM spool_items"
+            ).fetchone()
+            previous = self._conn.execute(
+                "SELECT length(CAST(id AS BLOB)) + length(CAST(payload AS BLOB)) "
+                "FROM spool_items WHERE id = ?", (item_id,),
+            ).fetchone()
+            projected_rows = rows + (previous is None)
+            projected_bytes = size_bytes - (previous[0] if previous else 0) + item_bytes
+            if projected_rows > self.max_rows or projected_bytes > self.max_bytes:
+                raise SpoolCapacityError(
+                    item_id, rows=rows, size_bytes=size_bytes,
+                    projected_rows=projected_rows, projected_bytes=projected_bytes,
+                    max_rows=self.max_rows, max_bytes=self.max_bytes,
+                )
             self._conn.execute(
                 "INSERT OR REPLACE INTO spool_items (id, payload, enqueued_at, attempts) "
                 "VALUES (?, ?, ?, COALESCE((SELECT attempts FROM spool_items WHERE id = ?), 0))",
                 (item_id, payload, ts, item_id),
             )
-            self._conn.commit()
 
     def pending(self, limit: int = 100) -> list[SpoolItem]:
         """Oldest first — a retry loop should drain in enqueue order."""
@@ -89,6 +150,15 @@ class DurableSpool:
         with self._lock:
             (count,) = self._conn.execute("SELECT COUNT(*) FROM spool_items").fetchone()
         return count
+
+    def size_bytes(self) -> int:
+        """UTF-8 ID/payload bytes currently persisted, including expired rows."""
+        with self._lock:
+            (size,) = self._conn.execute(
+                "SELECT COALESCE(SUM(length(CAST(id AS BLOB)) + "
+                "length(CAST(payload AS BLOB))), 0) FROM spool_items"
+            ).fetchone()
+        return size
 
     def close(self) -> None:
         with self._lock:

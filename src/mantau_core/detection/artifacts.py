@@ -1,10 +1,9 @@
 """Model artifacts a detector may load, pinned by SHA-256.
 
 `fixtures/model_artifacts.json` is the single list of expected files, sizes
-and hashes. Every agent verifies each file against it before handing the
-path to a runtime: the Python agent here, the Android agent against its own
-copy of the same manifest. A file that is missing, truncated, or different
-by one byte is never loaded.
+and hashes. Server inference verifies each file before handing its path to
+the detector runtime. Native agents use cloud inference and carry no local
+detector models. A missing, truncated, or altered artifact is never loaded.
 """
 
 from __future__ import annotations
