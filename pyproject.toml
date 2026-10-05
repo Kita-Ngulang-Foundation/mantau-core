@@ -21,7 +21,7 @@ push = ["google-auth>=2.29", "requests>=2.31"]
 # (distribution name "mantau-prototype", import name "mantau"). Pinned to a
 # commit; bump deliberately once mantau-AI's tests are green.
 detection = [
-    "mantau-prototype @ git+https://github.com/Kita-Ngulang-Foundation/mantau-AI.git@367ee73d8b0defd7373ee6c0813de49a174f5eb2",
+    "mantau-prototype @ git+https://github.com/Kita-Ngulang-Foundation/mantau-AI.git@5f0f3603fce0b249c66c1fba15e8ebea9a2bf394",
 ]
 dev = ["pytest>=8.0"]
 
