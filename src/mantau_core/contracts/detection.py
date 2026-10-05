@@ -100,7 +100,7 @@ class StillnessSettings(_Model):
     enabled: bool = True
     # Lying still on the floor is urgent; sitting still on a sofa is normal
     # for much longer.
-    floor_minutes: float = Field(default=2.0, ge=0.5, le=60.0)
+    floor_minutes: float = Field(default=0.5, ge=0.5, le=60.0)
     other_minutes: float = Field(default=45.0, ge=5.0, le=240.0)
 
 
