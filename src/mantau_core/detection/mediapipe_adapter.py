@@ -15,6 +15,8 @@ import site.
 gate, MediaPipe pose, rule-based fall confirmation, ONNX classifier) and
 translates its output into this package's vocabulary: falls become
 `contracts.FallEvent`, per-frame people become `activity` observations.
+The camera's bed and seating zones go the other way, into StreamingDetector's
+`zones` setting.
 Every model file is verified against `artifacts.py`'s pinned SHA-256 before
 any runtime sees it.
 """
@@ -24,18 +26,35 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable, Mapping
 
 import numpy as np
 
 from mantau_core.activity.observations import (
     FrameObservation, Perception, PersonObservation, Posture,
 )
-from mantau_core.contracts import FallEvent, Severity
+from mantau_core.contracts import FallEvent, Severity, Zone
 
 from .artifacts import BENCHMARK_FRAME, FALL_CLASSIFIER, FALL_CLASSIFIER_META, POSE_MODEL, verify
 
 MODEL_DIR_ENV = "MANTAU_MODEL_DIR"
+# Zone kinds StreamingDetector takes (mantau-AI `mantau.zones`). FLOOR zones
+# stay here: core owns the found-on-the-floor path.
+DETECTOR_ZONE_KINDS = ("bed", "seating")
+
+
+def detector_zones(zones: Iterable[Zone | Mapping] | None) -> list[dict]:
+    """The camera's zones as StreamingDetector's `zones` setting:
+    `[{zone_id, kind, polygon: [{x, y}, ...]}]`, bed and seating only.
+    Entries may be `Zone` objects or their JSON form."""
+    out = []
+    for zone in zones or ():
+        if not isinstance(zone, Zone):
+            zone = Zone.model_validate(zone)
+        if zone.kind.value in DETECTOR_ZONE_KINDS:
+            out.append({"zone_id": zone.zone_id, "kind": zone.kind.value,
+                        "polygon": [{"x": p.x, "y": p.y} for p in zone.polygon]})
+    return out
 
 
 def _default_model_dir() -> Path:
@@ -62,12 +81,15 @@ class MediapipeDetector:
     `config` is passed through to StreamingDetector (same shape as mantau-AI's
     config/default.yaml sections), except that model paths always come from the
     verified model directory: `model_dir` argument, else `MANTAU_MODEL_DIR`,
-    else the models packaged with the installed `mantau`.
+    else the models packaged with the installed `mantau`. `zones` (the
+    camera's `DetectionSettings.zones`, else `config["zones"]`) reach the
+    detector as bed and seating zones only; see `detector_zones`.
     """
 
     def __init__(self, camera_id: str, config: dict | None = None, *,
                  model_dir: str | Path | None = None,
-                 clock: Callable[[], datetime] | None = None) -> None:
+                 clock: Callable[[], datetime] | None = None,
+                 zones: Iterable[Zone | Mapping] | None = None) -> None:
         self.camera_id = camera_id
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         try:
@@ -96,6 +118,7 @@ class MediapipeDetector:
         cfg["fall"] = fall
         cfg["stream"] = {**cfg.get("stream", {}),
                          "benchmark_frame": str(self.artifacts[BENCHMARK_FRAME])}
+        cfg["zones"] = detector_zones(zones if zones is not None else cfg.get("zones"))
         self._impl = StreamingDetector(cfg)
 
     # -- Detector / PerceivingDetector ---------------------------------------
