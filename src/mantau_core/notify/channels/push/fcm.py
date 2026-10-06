@@ -10,6 +10,7 @@ Cloud dependency; only actually sending push does. Install it with:
 """
 
 from __future__ import annotations
+import asyncio
 
 from typing import Protocol
 
@@ -79,12 +80,13 @@ class FCMPushChannel:
     async def send(self, alert: Alert, target: str) -> Delivery:
         message = build_fcm_message(token=target, alert=alert)
         url = f"https://fcm.googleapis.com/v1/projects/{self.project_id}/messages:send"
-        headers = {"Authorization": f"Bearer {self._credentials.access_token()}"}
+        bearer = await asyncio.to_thread(self._credentials.access_token)
+        headers = {"Authorization": f"Bearer {bearer}"}
 
         resp = await self._client.post(url, json=message, headers=headers)
 
         if resp.status_code == 200:
-            self._tokens.touch(target)
+            await asyncio.to_thread(self._tokens.touch, target)
             name = ""
             try:
                 name = resp.json().get("name", "")
@@ -99,7 +101,7 @@ class FCMPushChannel:
             pass
         kind = classify_fcm_error(resp.status_code, body)
         if kind is PushErrorKind.UNREGISTERED:
-            self._tokens.prune(target)
+            await asyncio.to_thread(self._tokens.prune, target)
         detail = body.get("error", {}).get("message", resp.text)
         raise PushDeliveryError(kind, detail)
 
