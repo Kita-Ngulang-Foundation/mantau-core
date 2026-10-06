@@ -40,3 +40,11 @@ def test_camera_metadata_rejects_embedded_credentials(field, value):
     from mantau_core.contracts import CameraRequestMetadata
     with pytest.raises(ValueError):
         CameraRequestMetadata(**{'name': 'Room', 'host': 'camera.local', field: value})
+
+
+def test_camera_request_can_ask_the_agent_to_find_stream_paths():
+    from mantau_core.contracts import CameraRequestMetadata
+
+    request = CameraRequestMetadata(name="Ruang tamu", host="192.168.1.20", auto_detect=True)
+    assert request.auto_detect is True
+    assert CameraRequestMetadata(name="x", host="h").auto_detect is False

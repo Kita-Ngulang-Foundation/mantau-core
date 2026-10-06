@@ -17,6 +17,7 @@ from mantau_core.contracts import EventKind, FallEvent, Severity
 
 class Alert(BaseModel):
     event_id: str
+    household_id: str | None = None
     camera_id: str
     camera_name: str
     # Lets the app pick icon/copy per detection without parsing the title.
