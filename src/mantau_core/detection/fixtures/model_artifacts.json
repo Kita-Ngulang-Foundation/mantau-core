@@ -20,8 +20,8 @@
       }
     },
     "fall_classifier.onnx": {
-      "sha256": "a34ea596142335ae4a93eda99ce6af61db17e035abd63aebf4170de5d6a0114c",
-      "bytes": 169389,
+      "sha256": "16ebbd027f9042e46786b6393d61a480a92c97b4dabbcd195152221b76dda70a",
+      "bytes": 169161,
       "description": "Fall confirmation classifier (HistGradientBoosting) exported from fall_classifier.joblib with sklearn-onnx",
       "licence": "Own model (licenses.xlsx L037); attribution of its training datasets in mantau THIRD_PARTY_NOTICES.md",
       "training_data": {
@@ -51,14 +51,6 @@
             "rows": 8002
           },
           {
-            "dataset_id": "urfall",
-            "tier": "T2",
-            "environments": [
-              "urfall"
-            ],
-            "rows": 2625
-          },
-          {
             "dataset_id": "ursul",
             "tier": "T1",
             "environments": [
@@ -68,21 +60,23 @@
             "rows": 39766
           }
         ],
-        "excluded_tiers": []
+        "excluded_tiers": [
+          "T2"
+        ]
       },
       "lineage": {
         "origin": "HistGradientBoosting trained from scratch on mantau-AI features (scripts/train_classifier.py), exported with sklearn-onnx",
         "source_model": "fall_classifier.joblib",
-        "source_sha256": "86147e1004cfbaa097059f93341822b0d2a8a1e0eed462436c6251c71c7f4c52",
-        "trained_at": "2026-10-02T15:37:52.014875+00:00",
+        "source_sha256": "9569fa0fa3cd3567a148759371f017d17b486973ef2106fc7c71dc83d32a51ba",
+        "trained_at": "2026-10-06T04:23:05.921526+00:00",
         "pretraining": [],
         "initialised_from": null,
         "trained_here": true
       }
     },
     "fall_classifier.onnx.json": {
-      "sha256": "d99f5824bfe9c3f7e125dd97cb4126df229ce2b5d5c5cf62bd634ea01a8379a9",
-      "bytes": 2134,
+      "sha256": "21a759c7b1ec3a97d1f75ee8b7ab1c024455a3d0c119664854fb70605b06e101",
+      "bytes": 2003,
       "description": "Feature schema and decision threshold for fall_classifier.onnx",
       "licence": "Own file (licenses.xlsx L037)",
       "training_data": {
@@ -112,14 +106,6 @@
             "rows": 8002
           },
           {
-            "dataset_id": "urfall",
-            "tier": "T2",
-            "environments": [
-              "urfall"
-            ],
-            "rows": 2625
-          },
-          {
             "dataset_id": "ursul",
             "tier": "T1",
             "environments": [
@@ -129,7 +115,9 @@
             "rows": 39766
           }
         ],
-        "excluded_tiers": []
+        "excluded_tiers": [
+          "T2"
+        ]
       },
       "lineage": {
         "origin": "Sidecar written by scripts/export_onnx.py for fall_classifier.onnx",
