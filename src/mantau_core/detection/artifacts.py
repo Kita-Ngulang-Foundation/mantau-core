@@ -5,13 +5,19 @@ and hashes. Every agent verifies each file against it before handing the
 path to a runtime: the Python agent here, the Android agent against its own
 copy of the same manifest. A file that is missing, truncated, or different
 by one byte is never loaded.
+
+Schema version 2 (plan Phase 6 step 3) adds, on every entry, `licence`,
+`training_data` (dataset ids and tiers; empty for files not trained here) and
+`lineage` (every pretraining set and initialisation checkpoint, and where the
+file comes from). A manifest of another version, or an entry without these
+fields, is refused.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
@@ -20,6 +26,8 @@ POSE_MODEL = "pose_landmarker_lite.task"
 FALL_CLASSIFIER = "fall_classifier.onnx"
 FALL_CLASSIFIER_META = "fall_classifier.onnx.json"
 BENCHMARK_FRAME = "benchmark_person.jpg"
+SCHEMA_VERSION = 2
+PROVENANCE_FIELDS = ("licence", "training_data", "lineage")
 
 
 class ArtifactError(RuntimeError):
@@ -31,13 +39,25 @@ class Artifact:
     name: str
     sha256: str
     size: int
+    licence: str = ""
+    training_data: dict = field(default_factory=dict, compare=False)
+    lineage: dict = field(default_factory=dict, compare=False)
 
 
 def manifest() -> dict[str, Artifact]:
     data = json.loads(resources.files("mantau_core.detection")
                       .joinpath(MANIFEST_RESOURCE).read_text(encoding="utf-8"))
-    return {name: Artifact(name, entry["sha256"], int(entry["bytes"]))
-            for name, entry in data["artifacts"].items()}
+    if data.get("schema_version") != SCHEMA_VERSION:
+        raise ArtifactError(f"model artifact manifest is schema version "
+                            f"{data.get('schema_version')}, expected {SCHEMA_VERSION}")
+    pinned = {}
+    for name, entry in data["artifacts"].items():
+        missing = [key for key in PROVENANCE_FIELDS if key not in entry]
+        if missing:
+            raise ArtifactError(f"{name} has no {', '.join(missing)} in the manifest")
+        pinned[name] = Artifact(name, entry["sha256"], int(entry["bytes"]),
+                                entry["licence"], entry["training_data"], entry["lineage"])
+    return pinned
 
 
 def sha256_file(path: Path) -> str:

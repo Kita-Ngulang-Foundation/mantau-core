@@ -1,26 +1,161 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "source": "github.com/Kita-Ngulang-Foundation/mantau-AI (src/mantau/assets)",
   "artifacts": {
     "pose_landmarker_lite.task": {
       "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
       "bytes": 5777746,
-      "description": "MediaPipe Pose Landmarker (lite, float16), Apache-2.0, from storage.googleapis.com/mediapipe-models"
+      "description": "MediaPipe Pose Landmarker (lite, float16), Apache-2.0, from storage.googleapis.com/mediapipe-models",
+      "licence": "Apache-2.0 (licenses.xlsx L035; Apache notice, model card usage notes)",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Not trained in this project; Google in-house data (BlazePose GHUM model card)"
+      },
+      "lineage": {
+        "origin": "Google MediaPipe release, storage.googleapis.com/mediapipe-models",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": false
+      }
     },
     "fall_classifier.onnx": {
       "sha256": "a34ea596142335ae4a93eda99ce6af61db17e035abd63aebf4170de5d6a0114c",
       "bytes": 169389,
-      "description": "Fall confirmation classifier (HistGradientBoosting) exported from fall_classifier.joblib with sklearn-onnx"
+      "description": "Fall confirmation classifier (HistGradientBoosting) exported from fall_classifier.joblib with sklearn-onnx",
+      "licence": "Own model (licenses.xlsx L037); attribution of its training datasets in mantau THIRD_PARTY_NOTICES.md",
+      "training_data": {
+        "datasets": [
+          {
+            "dataset_id": "caucafall",
+            "tier": "T1",
+            "environments": [
+              "caucafall"
+            ],
+            "rows": 5611
+          },
+          {
+            "dataset_id": "fallvision",
+            "tier": "T1",
+            "environments": [
+              "fallvision"
+            ],
+            "rows": 347344
+          },
+          {
+            "dataset_id": "gmdcsa24",
+            "tier": "T1",
+            "environments": [
+              "gmdcsa24"
+            ],
+            "rows": 8002
+          },
+          {
+            "dataset_id": "urfall",
+            "tier": "T2",
+            "environments": [
+              "urfall"
+            ],
+            "rows": 2625
+          },
+          {
+            "dataset_id": "ursul",
+            "tier": "T1",
+            "environments": [
+              "loc1",
+              "loc3"
+            ],
+            "rows": 39766
+          }
+        ],
+        "excluded_tiers": []
+      },
+      "lineage": {
+        "origin": "HistGradientBoosting trained from scratch on mantau-AI features (scripts/train_classifier.py), exported with sklearn-onnx",
+        "source_model": "fall_classifier.joblib",
+        "source_sha256": "86147e1004cfbaa097059f93341822b0d2a8a1e0eed462436c6251c71c7f4c52",
+        "trained_at": "2026-10-02T15:37:52.014875+00:00",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": true
+      }
     },
     "fall_classifier.onnx.json": {
       "sha256": "d99f5824bfe9c3f7e125dd97cb4126df229ce2b5d5c5cf62bd634ea01a8379a9",
       "bytes": 2134,
-      "description": "Feature schema and decision threshold for fall_classifier.onnx"
+      "description": "Feature schema and decision threshold for fall_classifier.onnx",
+      "licence": "Own file (licenses.xlsx L037)",
+      "training_data": {
+        "datasets": [
+          {
+            "dataset_id": "caucafall",
+            "tier": "T1",
+            "environments": [
+              "caucafall"
+            ],
+            "rows": 5611
+          },
+          {
+            "dataset_id": "fallvision",
+            "tier": "T1",
+            "environments": [
+              "fallvision"
+            ],
+            "rows": 347344
+          },
+          {
+            "dataset_id": "gmdcsa24",
+            "tier": "T1",
+            "environments": [
+              "gmdcsa24"
+            ],
+            "rows": 8002
+          },
+          {
+            "dataset_id": "urfall",
+            "tier": "T2",
+            "environments": [
+              "urfall"
+            ],
+            "rows": 2625
+          },
+          {
+            "dataset_id": "ursul",
+            "tier": "T1",
+            "environments": [
+              "loc1",
+              "loc3"
+            ],
+            "rows": 39766
+          }
+        ],
+        "excluded_tiers": []
+      },
+      "lineage": {
+        "origin": "Sidecar written by scripts/export_onnx.py for fall_classifier.onnx",
+        "describes": "fall_classifier.onnx",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": false
+      }
     },
     "benchmark_person.jpg": {
       "sha256": "4c7b2d70ffadec52f0eaa793bfcb30bcd92e6d5f3cc485c5d393f990c85685fe",
       "bytes": 27212,
-      "description": "320x240 frame with one standing person (GMDCSA24 Subject 1, ADL/08 at 3.0 s) for measuring real pose throughput"
+      "description": "320x240 frame with one standing person (GMDCSA24 Subject 1, ADL/08 at 3.0 s) for measuring real pose throughput",
+      "licence": "MIT, GMDCSA24 (licenses.xlsx L028, L001; keep the MIT notice)",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": []
+      },
+      "lineage": {
+        "origin": "One frame of GMDCSA24 Subject 1 ADL/08 at 3.0 s, cropped and resized to 320x240",
+        "dataset_id": "gmdcsa24",
+        "tier": "T1",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": false
+      }
     }
   }
 }
