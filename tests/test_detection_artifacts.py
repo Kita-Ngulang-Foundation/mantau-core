@@ -27,7 +27,7 @@ def test_manifest_pins_every_model_file():
 
 def test_manifest_ships_with_the_package():
     raw = resources.files("mantau_core.detection").joinpath(artifacts.MANIFEST_RESOURCE)
-    assert json.loads(raw.read_text(encoding="utf-8"))["schema_version"] == 1
+    assert json.loads(raw.read_text(encoding="utf-8"))["schema_version"] == 2
 
 
 def test_matching_file_verifies(tmp_path, monkeypatch):
