@@ -125,6 +125,12 @@ class BathroomSettings(_Model):
         return self
 
 
+class RecordingSettings(_Model):
+    """Whether this camera records incidents; detection and alerts remain independent."""
+
+    enabled: bool = True
+
+
 class DetectionSettings(_Model):
     """The whole per-camera configuration. `version` increases with every
     change so the agent can report which one it is running."""
@@ -136,6 +142,7 @@ class DetectionSettings(_Model):
     stillness: StillnessSettings = Field(default_factory=StillnessSettings)
     nocturnal: NocturnalSettings = Field(default_factory=NocturnalSettings)
     bathroom: BathroomSettings = Field(default_factory=BathroomSettings)
+    recordings: RecordingSettings = Field(default_factory=RecordingSettings)
     zones: list[Zone] = Field(default_factory=list, max_length=16)
 
     @field_validator("timezone")

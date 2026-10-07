@@ -10,8 +10,9 @@ from .envelope import Envelope, PayloadKind
 from .errors import AttemptedFrom, ReachabilityError, ReachabilityErrorKind
 from .detection import (
     BathroomSettings, DetectionSettings, FallSettings, NocturnalSettings, Point,
-    StillnessSettings, Zone, ZoneKind,
+    RecordingSettings, StillnessSettings, Zone, ZoneKind,
 )
+from .recordings import AgentRecording, AgentRecordingsSnapshot
 from .events import DEFAULT_SEVERITY, ClipRef, EventKind, FallEvent, Heartbeat, Severity, default_severity
 from .control import (
     AgentCapabilityReport, AgentClaimStatus, AgentHealthState, AgentPlatform,
@@ -23,6 +24,9 @@ from .control import (
 from .inference import InferenceCapability, InferenceConfirmation, InferenceResult
 
 __all__ = [
+    "RecordingSettings",
+    "AgentRecording",
+    "AgentRecordingsSnapshot",
     "InferenceCapability",
     "InferenceConfirmation",
     "InferenceResult",

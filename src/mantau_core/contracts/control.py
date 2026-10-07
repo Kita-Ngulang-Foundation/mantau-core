@@ -69,6 +69,8 @@ class CommandType(str, Enum):
     REMOVE_CAMERA = "remove_camera"
     # Payload: {"camera_id": ..., "settings": DetectionSettings JSON}.
     APPLY_DETECTION_SETTINGS = "apply_detection_settings"
+    # Transfer one retained local incident to a currently authenticated viewer.
+    UPLOAD_RECORDING = "upload_recording"
 
 
 class CommandState(str, Enum):
