@@ -58,9 +58,15 @@ class ActivityEngine:
 
     def apply_settings(self, settings: DetectionSettings) -> None:
         if settings.version != self.settings.version or settings != self.settings:
+            recording_only = (
+                settings.recordings != self.settings.recordings
+                and settings.model_dump(exclude={"version", "recordings"})
+                == self.settings.model_dump(exclude={"version", "recordings"})
+            )
             self.settings = settings
-            for rule in self.rules:
-                rule.reset()
+            if not recording_only:
+                for rule in self.rules:
+                    rule.reset()
 
     def update(self, observation: FrameObservation) -> list[FallEvent]:
         excluded = self.settings.zones_of(ZoneKind.EXCLUDED)
