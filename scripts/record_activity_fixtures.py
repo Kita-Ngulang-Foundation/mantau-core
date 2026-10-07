@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -46,6 +47,9 @@ ELSEWHERE = (0.3, 0.3)  # unzoned
 # 02:00 and 13:00 in Jakarta (UTC+7).
 NIGHT = datetime(2026, 9, 23, 19, 0, tzinfo=timezone.utc)
 DAY = datetime(2026, 9, 24, 6, 0, tzinfo=timezone.utc)
+# 03:00 and 04:30 in Jakarta, for the longer night scenarios (5 s steps).
+NIGHT_LATE = datetime(2026, 9, 23, 20, 0, tzinfo=timezone.utc)
+NIGHT_END = datetime(2026, 9, 23, 21, 30, tzinfo=timezone.utc)
 
 
 def person(track: int, anchor, posture: str = "standing", motion: float = 0.0,
@@ -75,6 +79,14 @@ class Scene:
         """Move the clock without observations (a gap, or a regression if < 0)."""
         self.at += timedelta(seconds=seconds)
         return self
+
+    def after_night(self, tz: str = "Asia/Jakarta", end: time = time(5, 0)) -> "Scene":
+        """Jump to one second after the night window ends (household-local) and
+        add one empty step there: the night rule's summary comes on it."""
+        local = self.at.astimezone(ZoneInfo(tz))
+        day = local.date() if local.time() < end else local.date() + timedelta(days=1)
+        self.at = datetime.combine(day, end, tzinfo=ZoneInfo(tz)) + timedelta(seconds=1)
+        return self.hold(self.step.total_seconds())
 
 
 def _iso(at: datetime) -> str:
@@ -194,11 +206,18 @@ def scenarios() -> list[tuple[str, str, dict, Scene]]:
               "A 10 minute bathroom visit: no alert.",
               settings(), Scene(DAY, 5.0).hold(10, standing(1, AT_DOOR)).hold(600)
               .hold(20, standing(2, AT_DOOR))))
-    s.append(("bathroom_visitor_pauses",
-              "While someone else is in the room the absence is ambiguous: the timer pauses "
-              "for the 15 minutes the visitor is there, so the warning comes 15 minutes later.",
+    s.append(("bathroom_visitor_ends_visit",
+              "A confident person walking in during a visit ends it, wherever they appear "
+              "(they may be the occupant, back unseen): a visitor who stays 15 minutes and "
+              "leaves raises nothing afterwards (accepted trade-off).",
               settings(), Scene(DAY, 5.0).hold(10, standing(1, AT_DOOR)).hold(600)
               .hold(900, person(2, ON_SOFA, "sitting")).hold(900)))
+    s.append(("bathroom_reappears_outside_door",
+              "Walks into the bathroom door zone and disappears; 10 minutes later is first seen "
+              "again in the middle of the room (not at the door), then the room is empty for "
+              "40 minutes: the reappearance ended the visit, no alert.",
+              settings(), Scene(DAY, 5.0).hold(10, standing(1, AT_DOOR)).hold(600)
+              .hold(20, standing(2, MIDDLE)).hold(2400)))
     s.append(("bathroom_outage_does_not_start_a_visit",
               "Someone near the door when the camera drops for 30 minutes: an outage is not a "
               "disappearance into the bathroom.",
@@ -209,46 +228,77 @@ def scenarios() -> list[tuple[str, str, dict, Scene]]:
               settings(), Scene(DAY, 5.0).hold(10, standing(1, AT_DOOR)).hold(600)
               .camera_lost(1800).hold(900)))
 
+    # Every night scenario ends with one step after the window (`after_night`), where
+    # the night rule emits its INFO summary of the night.
     night = settings(nocturnal={"max_bed_exits": 2, "out_of_bed_minutes": 10})
     s.append(("night_single_bathroom_trip",
               "At night: in bed, one trip to the bathroom (6 minutes out of view), back to bed. "
-              "Normal: no alert.",
+              "The first exit of the night warns once; the summary after the window counts "
+              "one exit and the time away, out of view included.",
               night, Scene(NIGHT).hold(120, lying(1, IN_BED)).hold(30, standing(1, MIDDLE))
               .hold(10, standing(1, AT_DOOR)).hold(360).hold(10, standing(2, AT_DOOR))
-              .hold(30, standing(2, MIDDLE)).hold(300, lying(2, IN_BED))))
+              .hold(30, standing(2, MIDDLE)).hold(300, lying(2, IN_BED)).after_night()))
     exits = Scene(NIGHT)
     for _ in range(3):
         exits.hold(90, lying(1, IN_BED)).hold(40, standing(1, MIDDLE))
-    exits.hold(90, lying(1, IN_BED))
+    exits.hold(90, lying(1, IN_BED)).after_night()
     s.append(("night_repeated_bed_exits",
-              "Three bed exits in one night with max_bed_exits=2: one alert on the third.",
+              "Three bed exits in one night with max_bed_exits=2: the first-exit warning, "
+              "one 'too many exits' warning on the third, and a summary with three exits.",
               night, exits))
     s.append(("night_out_of_bed_too_long",
-              "Out of bed and in view for 12 minutes with out_of_bed_minutes=10: one alert.",
-              night, Scene(NIGHT).hold(120, lying(1, IN_BED)).hold(720, standing(1, MIDDLE))))
+              "Out of bed and in view for 12 minutes with out_of_bed_minutes=10: the first-exit "
+              "warning, one 'out of bed too long' warning, and a summary whose open away "
+              "episode closes at the last step inside the window.",
+              night, Scene(NIGHT).hold(120, lying(1, IN_BED)).hold(720, standing(1, MIDDLE))
+              .after_night()))
     wander = Scene(NIGHT).hold(120, lying(1, IN_BED))
     for _ in range(5):
         wander.hold(10, standing(1, MIDDLE)).hold(10, person(1, ON_SOFA, "sitting"))
+    wander.after_night()
     s.append(("night_wandering",
-              "Out of bed moving back and forth between the room and the sofa: wandering alert "
-              "at the 8th zone change.", night, wander))
+              "Out of bed moving back and forth between the room and the sofa: no live "
+              "wandering alert any more; the zone changes appear in the summary only.",
+              night, wander))
     s.append(("daytime_bed_exits_are_not_nocturnal",
               "The same three bed exits by day: no nocturnal alert.",
               night, Scene(DAY).hold(90, lying(1, IN_BED)).hold(40, standing(1, MIDDLE))
               .hold(90, lying(1, IN_BED)).hold(40, standing(1, MIDDLE))
               .hold(90, lying(1, IN_BED)).hold(40, standing(1, MIDDLE))))
     s.append(("night_two_people_is_ambiguous",
-              "Two people moving at night (a carer): nocturnal timers pause.",
+              "Two people moving at night (a carer): nocturnal timers pause; the summary "
+              "reports no exit.",
               night, Scene(NIGHT).hold(120, lying(1, IN_BED))
-              .hold(720, standing(1, MIDDLE), standing(2, ELSEWHERE))))
+              .hold(720, standing(1, MIDDLE), standing(2, ELSEWHERE)).after_night()))
     # Berlin switches to summer time at 02:00 local on 2026-03-29.
     dst = Scene(datetime(2026, 3, 29, 0, 52, tzinfo=timezone.utc))  # 01:52 CET; clocks jump 02:00 -> 03:00
-    dst.hold(120, lying(1, IN_BED)).hold(840, standing(1, MIDDLE))
+    dst.hold(120, lying(1, IN_BED)).hold(840, standing(1, MIDDLE)).after_night("Europe/Berlin")
     s.append(("dst_night_berlin",
               "Europe/Berlin across the spring-forward change: the night window uses local "
-              "time, durations use real elapsed time (14 min out of bed alerts once at 10).",
+              "time, durations use real elapsed time (14 min out of bed alerts once at 10; the "
+              "summary's first exit is in real minutes after 22:00 CET).",
               settings(timezone="Europe/Berlin",
                        nocturnal={"max_bed_exits": 2, "out_of_bed_minutes": 10}), dst))
+    s.append(("night_first_exit_then_return",
+              "In bed, up for one minute, back to bed: one first-exit warning at the confirmed "
+              "exit, then a summary with one exit and about a minute away.",
+              settings(), Scene(NIGHT).hold(120, lying(1, IN_BED)).hold(60, standing(1, MIDDLE))
+              .hold(120, lying(1, IN_BED)).after_night()))
+    away = Scene(NIGHT_LATE, 5.0).hold(300, lying(1, IN_BED)).hold(120, standing(1, MIDDLE))
+    away.hold(300, lying(1, IN_BED)).hold(30, standing(1, ELSEWHERE)).hold(2400)
+    away.hold(30, standing(2, ELSEWHERE)).hold(30, standing(2, MIDDLE))
+    away.hold(300, lying(2, IN_BED)).hold(60, standing(2, MIDDLE)).hold(300, lying(2, IN_BED))
+    away.after_night()
+    s.append(("night_long_away_out_of_view",
+              "Three exits with max_bed_exits=2, the second a 40 minute absence out of view "
+              "(left the room, not through the bathroom door): first-exit and 'too many exits' "
+              "warnings; the summary's total and longest time away include the time out of view, "
+              "while 'out of bed too long' (in view only) stays quiet.",
+              settings(nocturnal={"max_bed_exits": 2}), away))
+    s.append(("night_no_exit_quiet_summary",
+              "Asleep in bed for the last 25 minutes of the night, no exit: no alert, one "
+              "silent INFO summary with zero exits (the coverage marker).",
+              settings(), Scene(NIGHT_END, 5.0).hold(1500, lying(1, IN_BED)).after_night()))
     return s
 
 

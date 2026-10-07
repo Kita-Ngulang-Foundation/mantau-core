@@ -58,13 +58,20 @@ camera's `DetectionSettings` (zones, thresholds, night window, timezone):
   fall, with its own alert text ("Terbaring di lantai"); its event carries the
   signal `floor: 1.0`. Not moving elsewhere warns at the threshold and turns
   critical at twice it.
-- **Nocturnal movement**: inside the household-local night window only; more
-  bed exits than `max_bed_exits`, out of bed (and in view) longer than
-  `out_of_bed_minutes`, or wandering between zones. A single bathroom trip
-  does not alert.
+- **Nocturnal movement**: inside the household-local night window only.
+  Live warnings: the first confirmed bed exit of the night (once per night),
+  more bed exits than `max_bed_exits`, and out of bed (and in view) longer
+  than `out_of_bed_minutes`. The rule also tallies the night (bed exits,
+  total and longest time away from bed including time out of view, minutes
+  from the window start to the first exit, zone changes, monitored time) and
+  emits one INFO summary on the first step after the window, also for a
+  night without exits (the silent coverage marker; the server does not push
+  it). Wandering between zones appears in the summary only. INFO alerts are
+  pushed quietly (normal priority, no sound, the app's `mantau_info` channel).
 - **Bathroom duration**: someone enters a bathroom-door zone and disappears;
-  the absence is timed until someone reappears at the door. Warning at
-  `warning_minutes`, critical at `critical_minutes`. It is worded as a
+  the absence is timed until someone reappears at the door, or any confident
+  person appears anywhere in view (a visitor walking in ends the visit too).
+  Warning at `warning_minutes`, critical at `critical_minutes`. It is worded as a
   prolonged absence after entering the bathroom area, never as an incident,
   and bathroom events are never recorded.
 

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from math import hypot
 from zoneinfo import ZoneInfo
 
@@ -206,7 +206,7 @@ BED_SETTLE_S = 60.0       # in bed at least this long before leaving counts as a
 EXIT_CONFIRM_S = 10.0     # out of bed this long confirms an exit
 RETURN_CONFIRM_S = 10.0   # back in bed this long ends the out-of-bed episode
 ZONE_SETTLE_S = 3.0       # a zone change counts once it has lasted this long
-WANDER_TRANSITIONS = 8    # zone changes in one out-of-bed night that count as wandering
+_EPOCH_DAY = date(1970, 1, 1)
 
 
 @dataclass
@@ -225,15 +225,41 @@ class _Night:
     pending_s: float = 0.0
     transitions: int = 0
     bed_zone: str | None = None
+    # The night's tally, reported once by the summary.
+    monitored_s: float = 0.0
+    away_total_s: float = 0.0
+    away_longest_s: float = 0.0
+    first_exit_at: datetime | None = None
+    last_at: datetime | None = None
+
+    def close_away(self, until: datetime) -> None:
+        """End an away episode: wall-clock time since the confirmed exit,
+        time out of view included."""
+        away = max((until - self.out_start).total_seconds(), 0.0)
+        self.away_total_s += away
+        self.away_longest_s = max(self.away_longest_s, away)
 
 
 class NocturnalMovementRule:
-    """Night-window activity of a single occupant, in household-local time:
-    more bed exits than `max_bed_exits`, out of bed longer than
-    `out_of_bed_minutes` (time out of view -- e.g. in the bathroom -- is not
-    counted), and wandering between zones. Each alert fires once per night
-    (out-of-bed once per episode). Needs at least one bed zone; pauses while
-    nobody or more than one person is confidently visible."""
+    """Night-window activity of a single occupant, in household-local time.
+
+    Live alerts (WARNING): the first confirmed bed exit of the night, once
+    per night; more bed exits than `max_bed_exits`, once per night; and out
+    of bed longer than `out_of_bed_minutes`, once per episode (time out of
+    view -- e.g. in the bathroom -- is not counted for this one).
+
+    The rule also tallies the night: bed exits, total and longest time away
+    from bed (wall clock from each confirmed exit to the confirmed return,
+    time out of view included; an episode still open when the window ends
+    closes at the last in-window step), minutes from the window start to the
+    first exit, zone changes while out of bed (single camera; no longer a live
+    alert), and the monitored time (steps inside the window with a bed zone).
+    On the first step after the window (or of another night) one INFO summary
+    reports it, also for a night without exits: that is the silent coverage
+    marker telling a calm night from one that was not monitored.
+
+    Needs at least one bed zone; pauses while nobody or more than one person
+    is confidently visible."""
 
     kind = EventKind.NOCTURNAL_MOVEMENT
 
@@ -246,21 +272,26 @@ class NocturnalMovementRule:
     def update(self, step: Step, settings: DetectionSettings) -> list[FallEvent]:
         cfg = settings.nocturnal
         beds = [z for z in settings.zones if z.kind is ZoneKind.BED]
-        if not beds or not in_window(step.at, cfg.start, cfg.end, settings.timezone):
+        in_night = bool(beds) and in_window(step.at, cfg.start, cfg.end, settings.timezone)
+        key = _night_key(step.at, cfg.start, cfg.end, settings.timezone) if in_night else None
+        events: list[FallEvent] = []
+        if self._night is not None and self._night.key != key:
+            events += self._summary(step, self._night, settings)
             self._night = None
-            return []
-        key = _night_key(step.at, cfg.start, cfg.end, settings.timezone)
-        if self._night is None or self._night.key != key:
+        if not in_night:
+            return events
+        if self._night is None:
             self._night = _Night(key=key)
         night = self._night
+        night.monitored_s += step.dt
+        night.last_at = step.at
         people = step.confident_people
         if len(people) != 1:
-            return []  # nobody to follow, or several people: ambiguous, pause
+            return events  # nobody to follow, or several people: ambiguous, pause
         person, dt = people[0], step.dt
         zone = placed_zone(person.anchor, settings)
         in_bed = zone is not None and zone.kind is ZoneKind.BED
         zone_key = zone.zone_id if zone is not None else "-"
-        events: list[FallEvent] = []
 
         if in_bed:
             night.in_bed_s += dt
@@ -269,6 +300,7 @@ class NocturnalMovementRule:
             if night.out_of_bed:
                 night.returning_s += dt
                 if night.returning_s >= RETURN_CONFIRM_S:
+                    night.close_away(step.at)
                     night.out_of_bed, night.out_start, night.out_s = False, None, 0.0
                     night.in_bed_s = night.returning_s
         else:
@@ -279,6 +311,11 @@ class NocturnalMovementRule:
                     night.out_of_bed, night.out_start = True, step.at
                     night.out_s, night.in_bed_s = night.leaving_s, 0.0
                     night.exits += 1
+                    if night.exits == 1:
+                        night.first_exit_at = step.at
+                        events.append(make_event(
+                            step, self.kind, Severity.WARNING, f"first_exit:{night.key}",
+                            signals={"bed_exits": 1.0}, zone_id=night.bed_zone))
                     if night.exits > cfg.max_bed_exits and "exits" not in night.fired:
                         night.fired.add("exits")
                         events.append(make_event(
@@ -302,14 +339,37 @@ class NocturnalMovementRule:
             if night.pending_zone is not None and night.pending_s >= ZONE_SETTLE_S:
                 night.zone, night.pending_zone, night.pending_s = night.pending_zone, None, 0.0
                 night.transitions += 1
-                if night.transitions >= WANDER_TRANSITIONS and "wander" not in night.fired:
-                    night.fired.add("wander")
-                    events.append(make_event(
-                        step, self.kind, Severity.WARNING, f"wander:{night.key}",
-                        signals={"transitions": float(night.transitions)}))
         else:
             night.zone, night.pending_zone, night.pending_s = zone_key, None, 0.0
         return events
+
+    def _summary(self, step: Step, night: _Night,
+                 settings: DetectionSettings) -> list[FallEvent]:
+        """The night's INFO summary, emitted at `step` (the first step after
+        the night). Nothing for a night that was never monitored."""
+        if night.monitored_s <= 0:
+            return []
+        if night.out_of_bed and night.out_start is not None and night.last_at is not None:
+            night.close_away(night.last_at)
+        day = date.fromisoformat(night.key)
+        signals = {
+            "summary": 1.0,
+            "bed_exits": float(night.exits),
+            "away_total_s": round(night.away_total_s, 1),
+            "away_longest_s": round(night.away_longest_s, 1),
+            "transitions": float(night.transitions),
+            "monitored_s": round(night.monitored_s, 1),
+            # The household-local date the night began, as days since
+            # 1970-01-01, so a client needs no time-zone data to place it.
+            "night_day": float((day - _EPOCH_DAY).days),
+        }
+        if night.first_exit_at is not None:
+            start = datetime.combine(day, settings.nocturnal.start,
+                                     tzinfo=ZoneInfo(settings.timezone))
+            signals["first_exit_min"] = round(
+                (night.first_exit_at - start).total_seconds() / 60, 1)
+        return [make_event(step, self.kind, Severity.INFO, f"summary:{night.key}",
+                           signals=signals)]
 
 
 def _night_key(at: datetime, start, end, tz: str) -> str:
@@ -336,8 +396,12 @@ class _Visit:
 class BathroomDurationRule:
     """A person seen entering a bathroom-door zone and then not seen again:
     the absence is timed from when they disappeared. Anyone reappearing in a
-    bathroom-door zone ends it. The timer pauses while anyone else is visible
-    (occupancy is ambiguous) and across camera outages. Warning at
+    bathroom-door zone ends it, and so does any confident person appearing or
+    re-acquired anywhere in view: someone who came back unseen and is first
+    seen elsewhere must not leave the timer running. A visitor walking in
+    during a visit therefore ends it too (accepted trade-off). The timer
+    pauses while someone already in view stays visible (occupancy is
+    ambiguous) and across camera outages. Warning at
     `warning_minutes`, critical at `critical_minutes`, once per visit.
 
     This measures a prolonged absence after entering the bathroom area; it
@@ -360,7 +424,8 @@ class BathroomDurationRule:
         if visit is not None:
             arrived = set(step.appeared) | set(step.reacquired)
             for person in step.people:
-                if person.local_id in arrived and zone_at(*person.anchor, doors) is not None:
+                if person.local_id in arrived and (
+                        person.confident or zone_at(*person.anchor, doors) is not None):
                     self._visit = None
                     return []
         if visit is None:

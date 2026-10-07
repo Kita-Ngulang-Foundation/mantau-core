@@ -20,7 +20,8 @@ FIXTURES = Path(str(resources.files("mantau_core.activity").joinpath(
     "fixtures/activity_sequences")))
 FILES = sorted(FIXTURES.glob("*.json"))
 ALLOWED_SIGNALS = {"duration_s", "movement", "confidence", "bed_exits", "transitions",
-                   "floor"}
+                   "floor", "summary", "away_total_s", "away_longest_s", "first_exit_min",
+                   "monitored_s", "night_day"}
 
 
 def _load(name: str) -> dict:
@@ -99,7 +100,7 @@ def test_visitors_and_excluded_zones():
     events = _load("visitor_does_not_mask_a_fall")["expected"]
     assert [(e["kind"], e["track_id"]) for e in events] == [("stillness", 1)]
     assert _kinds("excluded_zone_is_ignored") == []
-    assert _kinds("night_two_people_is_ambiguous") == []
+    assert _kinds("night_two_people_is_ambiguous") == [("nocturnal_movement", "info")]
 
 
 def test_occlusion_low_confidence_outage_and_regression_pause_instead_of_count():
@@ -167,7 +168,7 @@ def test_bathroom_absence_escalates_and_ends_on_return():
 
 
 def test_bathroom_pauses_for_other_people_and_outages():
-    assert _kinds("bathroom_visitor_pauses") == [("bathroom_duration", "warning")]
+    assert _kinds("bathroom_visitor_ends_visit") == []
     assert _kinds("bathroom_outage_does_not_start_a_visit") == []
     assert _kinds("bathroom_outage_pauses_a_visit") == [("bathroom_duration", "warning")]
 
@@ -175,18 +176,21 @@ def test_bathroom_pauses_for_other_people_and_outages():
 # -- night -----------------------------------------------------------------------------------
 
 def test_night_routines():
-    assert _kinds("night_single_bathroom_trip") == []
+    assert _kinds("night_single_bathroom_trip") == [("nocturnal_movement", "warning"),
+                                                    ("nocturnal_movement", "info")]
     exits = _load("night_repeated_bed_exits")["expected"]
-    assert [e["signals"] for e in exits] == [{"bed_exits": 3.0}]
-    assert _kinds("night_out_of_bed_too_long") == [("nocturnal_movement", "warning")]
+    assert [e["signals"] for e in exits[:2]] == [{"bed_exits": 1.0}, {"bed_exits": 3.0}]
+    assert _kinds("night_out_of_bed_too_long") == [("nocturnal_movement", "warning"),
+                                                   ("nocturnal_movement", "warning"),
+                                                   ("nocturnal_movement", "info")]
     wander = _load("night_wandering")["expected"]
-    assert [e["signals"] for e in wander] == [{"transitions": 8.0}]
+    assert [e["signals"].get("transitions") for e in wander] == [None, 9.0]
     assert _kinds("daytime_bed_exits_are_not_nocturnal") == []
 
 
 def test_dst_night_uses_local_window_and_real_durations():
     fixture = _load("dst_night_berlin")
-    event = fixture["expected"][0]
+    event = fixture["expected"][1]
     # Alert after the clocks jumped (03:xx CEST), 10 real minutes out of bed.
     assert _at(event["occurred_at"]) > datetime(2026, 3, 29, 1, 0, tzinfo=timezone.utc)
     assert event["signals"]["duration_s"] == pytest.approx(600, abs=1)

@@ -65,6 +65,31 @@ def anomaly_alert_text(*, camera_name: str, kind: EventKind,
     return title, body
 
 
+def first_bed_exit_text(*, camera_name: str) -> tuple[str, str]:
+    """The night rule's first confirmed bed exit of the night."""
+    title = f"Bangun dari tempat tidur — {camera_name}"
+    body = (f"Sistem melihat orang yang dipantau meninggalkan tempat tidur pada malam hari "
+            f"di {camera_name}. Ketuk untuk meninjau.")
+    return title, body
+
+
+def night_summary_text(*, camera_name: str, bed_exits: int, away_total_s: float | None,
+                       away_longest_s: float | None,
+                       first_exit_min: float | None) -> tuple[str, str]:
+    """The night rule's summary, sent after the night window ends."""
+    title = f"Ringkasan malam — {camera_name}"
+    if bed_exits <= 0:
+        return title, f"Tidak ada keluar dari tempat tidur semalam di {camera_name}."
+    parts = [f"Semalam keluar dari tempat tidur {bed_exits} kali di {camera_name}."]
+    if away_total_s:
+        parts.append(f"Total di luar tempat tidur{_minutes(away_total_s)}, "
+                     f"yang terlama{_minutes(away_longest_s)}.")
+    if first_exit_min is not None:
+        parts.append(f"Pertama keluar {max(0, round(first_exit_min))} menit setelah "
+                     f"jam malam dimulai.")
+    return title, " ".join(parts)
+
+
 def escalation_text(*, camera_name: str, unresponsive_contact_name: str) -> tuple[str, str]:
     """Sent to the NEXT contact in the chain, naming who already missed it."""
     title = f"Belum direspons — {camera_name}"
