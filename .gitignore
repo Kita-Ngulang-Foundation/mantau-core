@@ -29,3 +29,7 @@ Thumbs.db
 .mcp.json
 CLAUDE.md
 handoff.md
+
+# Local assistant tooling and notes
+.claude/
+claude_plan.md
