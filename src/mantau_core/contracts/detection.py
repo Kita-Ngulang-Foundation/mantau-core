@@ -131,6 +131,38 @@ class RecordingSettings(_Model):
     enabled: bool = True
 
 
+STREAM_MAX_WIDTHS = (640, 512, 384, 320)
+# Frames per second a motion-saving agent sends while nothing moves.
+MOTION_SAVER_FPS = 2.0
+
+
+class StreamSettings(_Model):
+    """How much video the agent sends to the server for this camera.
+
+    The defaults are what agents sent before this section existed. Lower
+    values cut the household's upload and the server's work per camera, at
+    some cost to live view, clips and (at the low end) detection; the
+    family app shows an estimate for each choice.
+    """
+
+    # Widest frame sent, in pixels; narrower cameras are never upscaled.
+    max_width: int = 640
+    jpeg_quality: int = Field(default=65, ge=30, le=90)
+    # Most frames per second sent for detection.
+    detection_fps: float = Field(default=10.0, ge=2.0, le=10.0)
+    # Live view shows the detection frames instead of a second upload.
+    live_from_detection: bool = False
+    # Send MOTION_SAVER_FPS while nothing in the picture moves.
+    motion_saver: bool = False
+
+    @field_validator("max_width")
+    @classmethod
+    def known_width(cls, value: int) -> int:
+        if value not in STREAM_MAX_WIDTHS:
+            raise ValueError(f"max_width must be one of {STREAM_MAX_WIDTHS}")
+        return value
+
+
 class DetectionSettings(_Model):
     """The whole per-camera configuration. `version` increases with every
     change so the agent can report which one it is running."""
@@ -143,6 +175,7 @@ class DetectionSettings(_Model):
     nocturnal: NocturnalSettings = Field(default_factory=NocturnalSettings)
     bathroom: BathroomSettings = Field(default_factory=BathroomSettings)
     recordings: RecordingSettings = Field(default_factory=RecordingSettings)
+    stream: StreamSettings = Field(default_factory=StreamSettings)
     zones: list[Zone] = Field(default_factory=list, max_length=16)
 
     @field_validator("timezone")

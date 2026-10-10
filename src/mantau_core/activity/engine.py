@@ -58,13 +58,17 @@ class ActivityEngine:
 
     def apply_settings(self, settings: DetectionSettings) -> None:
         if settings.version != self.settings.version or settings != self.settings:
-            recording_only = (
-                settings.recordings != self.settings.recordings
-                and settings.model_dump(exclude={"version", "recordings"})
-                == self.settings.model_dump(exclude={"version", "recordings"})
+            # Recording and stream-quality changes do not change what the rules
+            # decide, so an episode in progress (someone on the floor) survives them.
+            unrelated = {"version", "recordings", "stream"}
+            delivery_only = (
+                (settings.recordings != self.settings.recordings
+                 or settings.stream != self.settings.stream)
+                and settings.model_dump(exclude=unrelated)
+                == self.settings.model_dump(exclude=unrelated)
             )
             self.settings = settings
-            if not recording_only:
+            if not delivery_only:
                 for rule in self.rules:
                     rule.reset()
 
