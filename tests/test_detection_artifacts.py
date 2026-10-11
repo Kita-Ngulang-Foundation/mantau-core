@@ -19,7 +19,7 @@ def _write_pinned(tmp_path, name: str, content: bytes, monkeypatch):
 def test_manifest_pins_every_model_file():
     pinned = artifacts.manifest()
     assert set(pinned) == {artifacts.POSE_MODEL, artifacts.FALL_CLASSIFIER,
-                           artifacts.FALL_CLASSIFIER_META, artifacts.BENCHMARK_FRAME}
+                           artifacts.FALL_CLASSIFIER_META, artifacts.BENCHMARK_FRAME, *artifacts.RESEARCH_MODELS}
     for artifact in pinned.values():
         assert len(artifact.sha256) == 64 and int(artifact.sha256, 16) >= 0
         assert artifact.size > 0

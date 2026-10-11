@@ -21,7 +21,7 @@ cv2 = pytest.importorskip("cv2")
 from mantau_core.activity import FrameObservation, Posture  # noqa: E402
 from mantau_core.contracts import EventKind, FallEvent, Severity  # noqa: E402
 from mantau_core.detection import Detector, PerceivingDetector  # noqa: E402
-from mantau_core.detection.artifacts import ArtifactError, verify  # noqa: E402
+from mantau_core.detection.artifacts import ArtifactError, verify, manifest  # noqa: E402
 from mantau_core.detection.mediapipe_adapter import (  # noqa: E402
     MediapipeDetector, _default_model_dir,
 )
@@ -61,7 +61,28 @@ def detector():
 
 def test_packaged_models_match_the_pinned_manifest():
     verified = verify(_default_model_dir())
-    assert len(verified) == 4
+    assert len(verified) == len(manifest())
+
+
+def test_research_candidate_keeps_capture_time_and_id_through_confirmation():
+    from mantau.dense.dws import Window
+    at = [NOW]
+    detector = MediapipeDetector("research-camera", {"fall_model": "research"}, clock=lambda: at[0])
+    rule = detector._impl.rule
+    rule.score(Window(1, 0, []), 0.99, True, (0.1, 0.5, 0.7, 0.8))
+    pending = detector._translate(rule.drain()[0])
+    assert pending.severity is Severity.INFO
+    assert pending.signals["candidate_outcome"] == 0
+    assert pending.signals["last_down"] == 1
+    from datetime import timedelta
+    at[0] += timedelta(seconds=5)
+    events = detector.advance(5000)
+    assert len(events) == 1 and events[0].severity is Severity.CRITICAL
+    assert events[0].event_id == pending.event_id
+    assert events[0].occurred_at == pending.occurred_at == NOW
+    assert events[0].signals["confirmation_elapsed_s"] == 5
+    assert events[0].signals["track_lost_down"] == 1
+    detector.close()
 
 
 def test_satisfies_both_protocols(detector):

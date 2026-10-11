@@ -25,6 +25,8 @@ POSE_MODEL = "pose_landmarker_lite.task"
 FALL_CLASSIFIER = "fall_classifier.onnx"
 FALL_CLASSIFIER_META = "fall_classifier.onnx.json"
 BENCHMARK_FRAME = "benchmark_person.jpg"
+RESEARCH_MODELS = ("research_yolox_tiny.onnx", "research_rtmpose_m.onnx",
+                   "research_hgb.joblib", "research_gru.onnx", "research_gru_pt.onnx")
 SCHEMA_VERSION = 2
 PROVENANCE_FIELDS = ("licence", "training_data", "lineage")
 

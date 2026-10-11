@@ -94,6 +94,22 @@ class Zone(_Model):
 class FallSettings(_Model):
     enabled: bool = True
     min_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
+    model: str = Field(default="research", pattern=r"^(research|s1b)$")
+    tau_loose: float = Field(default=0.92, ge=0.0, le=1.0)
+    tau_high: float = Field(default=0.98, ge=0.0, le=1.0)
+    confirm_loose_s: float = Field(default=15.0, gt=0.0, le=120.0)
+    confirm_high_s: float = Field(default=5.0, gt=0.0, le=120.0)
+    down_share: float = Field(default=0.6, gt=0.0, le=1.0)
+    min_track_age_s: float = Field(default=0.0, ge=0.0, le=120.0)
+    max_edge_frac: float = Field(default=1.0, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def ordered_confirmation(self) -> "FallSettings":
+        if self.tau_high < self.tau_loose:
+            raise ValueError("tau_high must not be below tau_loose")
+        if self.confirm_high_s > self.confirm_loose_s:
+            raise ValueError("confirm_high_s must not exceed confirm_loose_s")
+        return self
 
 
 class StillnessSettings(_Model):

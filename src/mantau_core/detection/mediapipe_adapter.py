@@ -19,12 +19,14 @@ The camera's bed and seating zones go the other way, into StreamingDetector's
 `zones` setting.
 Every model file is verified against `artifacts.py`'s pinned SHA-256 before
 any runtime sees it.
+With `fall_model="research"` it instead wraps the final dense-window ensemble;
+the server derives this setting from the camera's FallSettings.model.
 """
 
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
@@ -35,7 +37,7 @@ from mantau_core.activity.observations import (
 )
 from mantau_core.contracts import FallEvent, Severity, Zone
 
-from .artifacts import BENCHMARK_FRAME, FALL_CLASSIFIER, FALL_CLASSIFIER_META, POSE_MODEL, verify
+from .artifacts import BENCHMARK_FRAME, FALL_CLASSIFIER, FALL_CLASSIFIER_META, POSE_MODEL, RESEARCH_MODELS, verify
 
 MODEL_DIR_ENV = "MANTAU_MODEL_DIR"
 # Zone kinds StreamingDetector takes (mantau-AI `mantau.zones`). FLOOR zones
@@ -92,6 +94,8 @@ class MediapipeDetector:
                  zones: Iterable[Zone | Mapping] | None = None) -> None:
         self.camera_id = camera_id
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._candidate_times = {}
+        self._research = (config or {}).get("fall_model", "s1b") == "research"
         try:
             from mantau.api.streaming import StreamingDetector  # the only mantau.* import
         except ImportError as exc:
@@ -102,6 +106,11 @@ class MediapipeDetector:
                 "mantau_core.detection.NullDetector."
             ) from exc
         directory = Path(model_dir or os.environ.get(MODEL_DIR_ENV) or _default_model_dir())
+        if self._research:
+            from mantau.dense.streaming import DenseDetector
+            self.artifacts = verify(directory, RESEARCH_MODELS + (BENCHMARK_FRAME,))
+            self._impl = DenseDetector((config or {}).get("fall_confirmation"), directory=directory)
+            return
         classifier_cfg = dict(((config or {}).get("fall") or {}).get("classifier") or {})
         use_classifier = classifier_cfg.get("enabled", True)
         names = (POSE_MODEL, BENCHMARK_FRAME) + (
@@ -123,6 +132,8 @@ class MediapipeDetector:
 
     # -- Detector / PerceivingDetector ---------------------------------------
     def push(self, frame: np.ndarray, ts_ms: int) -> list[FallEvent]:
+        if self._research:
+            return self.perceive(frame, ts_ms).events
         return [self._translate(ev) for ev in self._impl.push(frame, ts_ms)]
 
     def perceive(self, frame: np.ndarray, ts_ms: int) -> Perception:
@@ -142,6 +153,13 @@ class MediapipeDetector:
 
     def close(self) -> None:
         self._impl.close()
+
+    def advance(self, ts_ms: int) -> list[FallEvent]:
+        """Finish research candidates even if the camera stops sending frames."""
+        return [self._translate(ev) for ev in self._impl.advance(ts_ms)] if self._research else []
+
+    def cancel_candidates(self, ts_ms: int) -> list[FallEvent]:
+        return [self._translate(ev) for ev in self._impl.rule.cancel(ts_ms / 1000)] if self._research else []
 
     # -- translation -----------------------------------------------------------
     @staticmethod
@@ -164,6 +182,24 @@ class MediapipeDetector:
         because translation happens immediately after detection, in the same
         call.
         """
+        if self._research:
+            elapsed = (raw.resolved or raw.started) - raw.started
+            at = self._candidate_times.setdefault(raw.event_id, self._clock() - timedelta(seconds=elapsed))
+            signals = {"research_candidate": 1.0, "peak_p": raw.peak,
+                       "down_fraction": raw.down_fraction, "tier": float(raw.tier),
+                       "candidate_outcome": float(raw.outcome), "track_lost_down": float(raw.missing and raw.last_down),
+                       "confirm_s": raw.deadline - raw.started, "confirmation_elapsed_s": elapsed,
+                       "candidate_ts_ms": raw.started * 1000, "candidate_progress_s": raw.updated - raw.started,
+                       "last_down": float(raw.last_down), "down_share_required": float(self._impl.rule.settings["down_share"])}
+            # Capture geometry remains available when the track disappears.
+            for key, value in zip(("bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2"), raw.bbox):
+                signals[key] = float(value)
+            if raw.outcome:
+                self._candidate_times.pop(raw.event_id, None)
+            return FallEvent(event_id=raw.event_id, camera_id=self.camera_id,
+                             occurred_at=at, track_id=raw.track_id, confidence=raw.peak,
+                             severity=Severity.CRITICAL if raw.outcome == 1 else Severity.INFO,
+                             signals=signals)
         signals = {
             name: float(value)
             for name, value in (
