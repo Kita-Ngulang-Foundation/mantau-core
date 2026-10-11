@@ -144,6 +144,144 @@
         "initialised_from": null,
         "trained_here": false
       }
+    },
+    "research_yolox_tiny.onnx": {
+      "sha256": "ceb11c07298f95c50d7c5abeb906d03340c85f23aa79e3e66966e7fb6c307250",
+      "bytes": 20283006,
+      "description": "YOLOX-tiny humanart, 416 px, score threshold 0.25",
+      "licence": "OpenMMLab Apache-2.0 code; pretrained model dataset terms remain applicable",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Research/X1 pilot artifacts; no claim of commercial redistribution clearance"
+      },
+      "lineage": {
+        "origin": "OpenMMLab pretrained YOLOX-tiny humanart",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": false
+      }
+    },
+    "research_rtmpose_m.onnx": {
+      "sha256": "5c0a4bf67953e6d2ac43ce15e77dc9d5d354ae18430a47d2c5963a7bc5683e3c",
+      "bytes": 54330655,
+      "description": "RTMPose-m body7, 192x256 input",
+      "licence": "OpenMMLab Apache-2.0 code; pretrained model dataset terms remain applicable",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Research/X1 pilot artifacts; no claim of commercial redistribution clearance"
+      },
+      "lineage": {
+        "origin": "OpenMMLab pretrained RTMPose-m body7",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": false
+      }
+    },
+    "research_hgb.joblib": {
+      "sha256": "f6357e4d794f93b487ef519cd04f313cbf32ade1013a8d9f8edbf7dea071119c",
+      "bytes": 2230404,
+      "description": "Final HGB on 33 v3 features, 5.5 second windows; scikit-learn 1.9.0",
+      "licence": "Own trained model; source dataset permissions unchanged for the authorized pilot",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Research/X1 pilot artifacts; no claim of commercial redistribution clearance; HGB excludes OOPS; supplied final GRUs still include OOPS",
+        "windows": "outputs/x5/windows_final_w5.5_noOOPS.npz",
+        "environments": [
+          "caucafall",
+          "charades",
+          "fallvision-D",
+          "fallvision-M",
+          "fallvision-N",
+          "gmdcsa24",
+          "le2i",
+          "loc1",
+          "loc3",
+          "upfall",
+          "urfall"
+        ]
+      },
+      "lineage": {
+        "origin": "models-research/abl_hgb_noOOPS/final.joblib",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": true,
+        "source_sha256": "f6357e4d794f93b487ef519cd04f313cbf32ade1013a8d9f8edbf7dea071119c",
+        "research_commit": "bd2f58f"
+      }
+    },
+    "research_gru.onnx": {
+      "sha256": "42aaf7648a1d45e2f2a6af51eb4dc782f4e86abaf3a69f8aad2ed82ad93f0cb4",
+      "bytes": 518219,
+      "description": "Final bidirectional GRU probability on 68x17x3 keypoints",
+      "licence": "Own trained model; source dataset permissions unchanged for the authorized pilot",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Research/X1 pilot artifacts; no claim of commercial redistribution clearance; HGB excludes OOPS; supplied final GRUs still include OOPS",
+        "windows": "outputs/x5/windows_final_seq.npz",
+        "environments": [
+          "caucafall",
+          "charades",
+          "fallvision-D",
+          "fallvision-M",
+          "fallvision-N",
+          "gmdcsa24",
+          "le2i",
+          "loc1",
+          "loc3",
+          "oops",
+          "upfall",
+          "urfall"
+        ]
+      },
+      "lineage": {
+        "origin": "models-research/final_gru/final.pt",
+        "pretraining": [],
+        "initialised_from": null,
+        "trained_here": true,
+        "source_sha256": "ea69034a97c137d48af61e237080d54b565a2689ac712d464cb1a22513f38658",
+        "research_commit": "bd2f58f"
+      }
+    },
+    "research_gru_pt.onnx": {
+      "sha256": "d866efe18339b42c3a5d91f238876d3b64dd928bab2296a768d8b38bc7e6168c",
+      "bytes": 518219,
+      "description": "Final NTU-120 pretrained bidirectional GRU probability on 68x17x3 keypoints",
+      "licence": "Own trained model; source dataset permissions unchanged for the authorized pilot",
+      "training_data": {
+        "datasets": [],
+        "excluded_tiers": [],
+        "note": "Research/X1 pilot artifacts; no claim of commercial redistribution clearance; HGB excludes OOPS; supplied final GRUs still include OOPS",
+        "windows": "outputs/x5/windows_final_seq.npz",
+        "environments": [
+          "caucafall",
+          "charades",
+          "fallvision-D",
+          "fallvision-M",
+          "fallvision-N",
+          "gmdcsa24",
+          "le2i",
+          "loc1",
+          "loc3",
+          "oops",
+          "upfall",
+          "urfall"
+        ]
+      },
+      "lineage": {
+        "origin": "models-research/final_gru_pt/final.pt",
+        "pretraining": [
+          "NTU-120 2D"
+        ],
+        "initialised_from": "models-research/pretrain_gru/pretrained.pt",
+        "trained_here": true,
+        "source_sha256": "ece07c74d7fee1bb01961c6ea3af1cb651251459acaa4aae6f8e07c72c90dee7",
+        "research_commit": "bd2f58f",
+        "initialisation_sha256": "48d0a3767082d0f7c8eddbf0fefea6c5c19c36964be6ef53fcf6e584ecf380cb"
+      }
     }
   }
 }
