@@ -85,6 +85,27 @@ def test_research_candidate_keeps_capture_time_and_id_through_confirmation():
     detector.close()
 
 
+def test_research_candidate_resting_in_a_bed_zone_is_info_with_its_zone():
+    from mantau.dense.dws import Window
+    bed = {"zone_id": "bed-1", "kind": "bed",
+           "polygon": [{"x": 0.5, "y": 0.5}, {"x": 1, "y": 0.5}, {"x": 1, "y": 1}, {"x": 0.5, "y": 1}]}
+    floor = {"zone_id": "floor-1", "kind": "floor",
+             "polygon": [{"x": 0, "y": 0}, {"x": 0.4, "y": 0}, {"x": 0.4, "y": 0.4}]}
+    detector = MediapipeDetector("research-camera", {"fall_model": "research", "zones": [bed, floor]})
+    rule = detector._impl.rule
+    assert [zone.zone_id for zone in rule.zones.zones] == ["bed-1"]
+    rule.score(Window(1, 0, []), 0.99, True, (0.6, 0.6, 0.9, 0.8), (0.75, 0.7))
+    rule.drain()
+    for t in range(1, 6):
+        rule.observe(t, {1: (True, (0.6, 0.6, 0.9, 0.8), (0.75, 0.7))})
+    event = detector._translate(rule.drain()[0])
+    assert event.severity is Severity.INFO
+    assert event.signals["candidate_outcome"] == 5
+    assert event.signals["in_rest_zone"] == 1 and event.signals["rest_fraction"] == 1
+    assert event.zone_id == "bed-1"
+    detector.close()
+
+
 def test_satisfies_both_protocols(detector):
     assert isinstance(detector, Detector)
     assert isinstance(detector, PerceivingDetector)

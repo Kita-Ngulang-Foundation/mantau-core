@@ -12,6 +12,10 @@ packaged model hashes and translates candidate updates into existing events.
 Direct adapter callers select research via `{"fall_model":"research",
 "fall_confirmation":{...}}`; its existing default remains S1b for compatibility.
 The server explicitly derives research selection from camera settings.
+The camera's bed and seating zones reach the research confirm step. A
+candidate that would confirm while the person rests in such a zone (hip
+midpoint inside it for `down_share` of the down frames) resolves as outcome 5:
+INFO in history with the zone's `zone_id`, no alert.
 Activity rules, including the 30 s floor backup, retain their existing logic.
 
 Candidate event ids and capture times remain stable through confirmation.
