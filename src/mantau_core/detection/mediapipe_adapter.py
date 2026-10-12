@@ -16,7 +16,7 @@ gate, MediaPipe pose, rule-based fall confirmation, ONNX classifier) and
 translates its output into this package's vocabulary: falls become
 `contracts.FallEvent`, per-frame people become `activity` observations.
 The camera's bed and seating zones go the other way, into StreamingDetector's
-`zones` setting.
+`zones` setting (research: the confirm step's rest zones).
 Every model file is verified against `artifacts.py`'s pinned SHA-256 before
 any runtime sees it.
 With `fall_model="research"` it instead wraps the final dense-window ensemble;
@@ -109,7 +109,10 @@ class MediapipeDetector:
         if self._research:
             from mantau.dense.streaming import DenseDetector
             self.artifacts = verify(directory, RESEARCH_MODELS + (BENCHMARK_FRAME,))
-            self._impl = DenseDetector((config or {}).get("fall_confirmation"), directory=directory)
+            # Bed and seating zones mark rest in the confirm step.
+            settings = {**((config or {}).get("fall_confirmation") or {}),
+                        "zones": detector_zones(zones if zones is not None else (config or {}).get("zones"))}
+            self._impl = DenseDetector(settings, directory=directory)
             return
         classifier_cfg = dict(((config or {}).get("fall") or {}).get("classifier") or {})
         use_classifier = classifier_cfg.get("enabled", True)
@@ -190,7 +193,8 @@ class MediapipeDetector:
                        "candidate_outcome": float(raw.outcome), "track_lost_down": float(raw.missing and raw.last_down),
                        "confirm_s": raw.deadline - raw.started, "confirmation_elapsed_s": elapsed,
                        "candidate_ts_ms": raw.started * 1000, "candidate_progress_s": raw.updated - raw.started,
-                       "last_down": float(raw.last_down), "down_share_required": float(self._impl.rule.settings["down_share"])}
+                       "last_down": float(raw.last_down), "down_share_required": float(self._impl.rule.settings["down_share"]),
+                       "rest_fraction": float(raw.rest_fraction), "in_rest_zone": float(raw.outcome == 5)}
             # Capture geometry remains available when the track disappears.
             for key, value in zip(("bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2"), raw.bbox):
                 signals[key] = float(value)
@@ -199,7 +203,7 @@ class MediapipeDetector:
             return FallEvent(event_id=raw.event_id, camera_id=self.camera_id,
                              occurred_at=at, track_id=raw.track_id, confidence=raw.peak,
                              severity=Severity.CRITICAL if raw.outcome == 1 else Severity.INFO,
-                             signals=signals)
+                             signals=signals, zone_id=raw.zone_id if raw.outcome == 5 else None)
         signals = {
             name: float(value)
             for name, value in (
