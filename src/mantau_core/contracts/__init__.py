@@ -13,7 +13,7 @@ from .detection import (
     RecordingSettings, StillnessSettings, StreamSettings, Zone, ZoneKind,
 )
 from .recordings import AgentRecording, AgentRecordingsSnapshot
-from .events import DEFAULT_SEVERITY, ClipRef, EventKind, FallEvent, Heartbeat, Severity, default_severity
+from .events import DEFAULT_SEVERITY, HEARTBEAT_STATS, ClipRef, EventKind, FallEvent, Heartbeat, Severity, default_severity
 from .control import (
     AgentCapabilityReport, AgentClaimStatus, AgentHealthState, AgentPlatform,
     AgentSetupStatus, AgentStatus, CameraRequestMetadata, ClaimStatus,
@@ -43,6 +43,7 @@ __all__ = [
     "EventKind",
     "FallEvent",
     "Heartbeat",
+    "HEARTBEAT_STATS",
     "Severity",
     "DEFAULT_SEVERITY",
     "default_severity",

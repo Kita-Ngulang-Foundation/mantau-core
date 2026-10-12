@@ -9,11 +9,12 @@ one (de)serialization path everyone should use.
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class EventKind(str, Enum):
@@ -101,11 +102,25 @@ class FallEvent(BaseModel):
         return self.model_copy(update={"clip": clip})
 
 
+HEARTBEAT_STATS = (
+    "frames_decoded", "frames_uploaded", "upload_failures", "frames_dropped",
+    "rtsp_reconnects", "camera_down_s", "process_uptime_s", "memory_mb",
+    "battery_pct", "charging", "battery_temp_c", "thermal_status", "cpu_temp_c",
+    "load_1m",
+)
+
+
 class Heartbeat(BaseModel):
     """Liveness ping — from an RTSP worker (Scenario 1) or an agent (Scenario 2).
 
     `queue_depth` surfaces the buffer/spool backlog so a dashboard can show
     "camera is up but events are piling up" before an alert is ever late.
+
+    `agent_version` is the agent's build string (at most 64 characters, longer
+    values are truncated). `stats` holds optional performance counters keyed by
+    `HEARTBEAT_STATS`; counters are deltas since the previous heartbeat. Unknown
+    keys and non-numeric or non-finite values are dropped, so stats can never
+    reject a heartbeat.
     """
 
     agent_id: str
@@ -114,3 +129,29 @@ class Heartbeat(BaseModel):
     camera_reachable: bool
     detector_alive: bool
     queue_depth: int = 0
+    agent_version: str | None = None
+    stats: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("agent_version", mode="before")
+    @classmethod
+    def _truncate_version(cls, value: object) -> str | None:
+        return value[:64] if isinstance(value, str) else None
+
+    @field_validator("stats", mode="before")
+    @classmethod
+    def _keep_known_stats(cls, value: object) -> dict[str, float]:
+        # Runs before type checking, so a bad value is dropped here instead of
+        # failing the whole heartbeat.
+        if not isinstance(value, dict):
+            return {}
+        kept: dict[str, float] = {}
+        for key, raw in value.items():
+            if key not in HEARTBEAT_STATS or not isinstance(raw, (int, float)):
+                continue
+            try:
+                number = float(raw)
+            except OverflowError:
+                continue  # an int too large for a float
+            if math.isfinite(number):
+                kept[key] = number
+        return kept
