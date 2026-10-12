@@ -46,8 +46,13 @@ class Envelope(BaseModel):
 
     @classmethod
     def for_heartbeat(cls, agent_id: str, seq: int, heartbeat: Heartbeat) -> "Envelope":
-        return cls(agent_id=agent_id, seq=seq, kind=PayloadKind.HEARTBEAT,
-                    payload=heartbeat.model_dump(mode="json"))
+        # agent_version and stats are left out when unset, same as zone_id above:
+        # heartbeats from agents that predate them keep their exact signed payload.
+        exclude = {"agent_version"} if heartbeat.agent_version is None else set()
+        if not heartbeat.stats:
+            exclude.add("stats")
+        payload = heartbeat.model_dump(mode="json", exclude=exclude or None)
+        return cls(agent_id=agent_id, seq=seq, kind=PayloadKind.HEARTBEAT, payload=payload)
 
     def event(self) -> FallEvent:
         if self.kind is not PayloadKind.FALL_EVENT:
